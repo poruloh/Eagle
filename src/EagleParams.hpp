@@ -1,0 +1,77 @@
+/*
+   This file is part of the Eagle haplotype phasing software package
+   developed by Po-Ru Loh.  Copyright (C) 2015-2016 Harvard University.
+
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#ifndef EAGLEPARAMS_HPP
+#define EAGLEPARAMS_HPP
+
+#include <vector>
+#include <string>
+
+#include "Types.hpp"
+
+namespace EAGLE {
+
+  class EagleParams {
+  public:
+
+    // main input files
+    std::string famFile, bimFile, bedFile, vcfRef, vcfTarget;
+    int chrom;
+
+    // optional reference map file for filling in genpos
+    std::string geneticMapFile;
+
+    std::vector <std::string> removeFiles; // list(s) of indivs to remove
+    std::vector <std::string> excludeFiles; // list(s) of SNPs to exclude
+    double bpStart, bpEnd, bpFlanking;
+
+    std::string outPrefix; // .haps.gz .sample
+    std::string vcfOutFormat, vcfOutSuffix, vcfWriteMode;
+    // outFormat b|u|z|v -> outSuffix bcf|bcf|vcf.gz|vcf, writeMode wb|wbu|wz|w
+    bool noImpMissing;
+
+    bool usePBWT;
+    int pbwtIters;
+
+    // QC params
+    double maxMissingPerSnp, maxMissingPerIndiv;
+    
+    int numThreads;
+
+    double cMmax;
+    int beamWidth3, beamWidth4;
+    int maxHapStates;
+    double fracStep4;
+    double pErr;
+    uint seed;
+    bool noMapCheck;
+
+    int Kpbwt;
+
+    // testing
+    int iter;
+    std::string tmpPhaseConfsPrefix;
+    std::string maskFile; // list of indivs to mask (e.g., relatives)
+    bool trioCheck;
+
+    // populates members; error-checks
+    bool processCommandLineArgs(int argc, char *argv[]);
+  };
+}
+
+#endif
