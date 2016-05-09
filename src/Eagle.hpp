@@ -179,7 +179,8 @@ namespace EAGLE {
 		  const std::vector <uint> &nF2s, int step) const;
     void writeHapsGzSample(const std::string &prefix) const;
     void writeVcf(const std::string &tmpFile, const std::string &outFile, double bpStart,
-		  double bpEnd, const std::string &writeMode, bool noImpMissing) const;
+		  double bpEnd, const std::string &writeMode, bool noImpMissing, int argc,
+		  char**argv) const;
     void makeHardCalls(uint64 n0start, uint64 n0end, uint seed);
     void initRefIter(int refIter);
     void buildHashTables(int iter, int batch, int seed);

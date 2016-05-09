@@ -34,13 +34,14 @@
 #include "SyncedVcfData.hpp"
 #include "Timer.hpp"
 #include "StringUtils.hpp"
+#include "Version.hpp"
 
 using namespace EAGLE;
 using namespace std;
 
 #define LOCAL_TEST
 
-void phaseWithRef(const EagleParams &params, Timer &timer, double t0) {
+void phaseWithRef(const EagleParams &params, Timer &timer, double t0, int argc, char **argv) {
 
   string tmpFile = params.outPrefix + ".unphased." + params.vcfOutSuffix;
   string outFile = params.outPrefix + "." + params.vcfOutSuffix;
@@ -151,7 +152,7 @@ void phaseWithRef(const EagleParams &params, Timer &timer, double t0) {
   timer.update_time();
   cout << "Writing " << params.vcfOutSuffix << " output to " << outFile << endl;
   eagle.writeVcf(tmpFile, outFile, params.bpStart, params.bpEnd, params.vcfWriteMode,
-		 params.noImpMissing);
+		 params.noImpMissing, argc, argv);
   cout << "Time for writing output: " << timer.update_time() << endl;
 
   cout << "Total elapsed time for analysis = " << (timer.get_time()-t0) << " sec" << endl;
@@ -171,8 +172,9 @@ int main(int argc, char *argv[]) {
   cout << "                      +-----------------------------+" << endl;
   cout << "                      |                             |" << endl;
   cout << "                      |   Eagle v";
-  printf("%-19s|\n", version);
-  cout << "                      |   May 3, 2016               |" << endl;
+  printf("%-19s|\n", EAGLE_VERSION);
+  cout << "                      |   ";
+  printf("%-26s|\n", EAGLE_VERSION_DATE);
   cout << "                      |   Po-Ru Loh                 |" << endl;
   cout << "                      |                             |" << endl;
   cout << "                      +-----------------------------+" << endl;
@@ -223,7 +225,7 @@ int main(int argc, char *argv[]) {
   omp_set_num_threads(params.numThreads);
 
   if (!params.vcfRef.empty()) { // use reference haplotypes
-    phaseWithRef(params, timer, t0);
+    phaseWithRef(params, timer, t0, argc, argv);
     return 0;
   }
   

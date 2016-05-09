@@ -1,7 +1,7 @@
                       +-----------------------------+
                       |                             |
-                      |   Eagle v2.0                |
-                      |   May 3, 2016               |
+                      |   Eagle v2.0.1              |
+                      |   May 9, 2016               |
                       |   Po-Ru Loh                 |
                       |                             |
                       +-----------------------------+
@@ -53,19 +53,19 @@ PHASING ITER 1 OF 1
 
 Making HapHedge
 Built PBWT on 338 haplotypes
-Time for HapHedge: 0.00177598
+Time for HapHedge: 0.00191903
 
 Phasing target samples
-................................................................................Time for phasing iter 1: 0.177355
-Time for phasing iter 1 impMissing: 0.00705862
+................................................................................Time for phasing iter 1: 0.187661
+Time for phasing iter 1 impMissing: 0.00736785
 Writing vcf.gz output to target.phased.vcf.gz
 [W::vcf_parse] INFO 'AC' is not defined in the header, assuming Type=String
 [W::vcf_parse] INFO 'AN' is not defined in the header, assuming Type=String
 [W::vcf_parse] INFO 'DP' is not defined in the header, assuming Type=String
 [W::vcf_parse] INFO 'AFR_AF' is not defined in the header, assuming Type=String
 [W::vcf_parse] INFO 'EX_TARGET' is not defined in the header, assuming Type=String
-Time for writing output: 0.019551
-Total elapsed time for analysis = 0.356705 sec
+Time for writing output: 0.022923
+Total elapsed time for analysis = 0.378794 sec
 
 Mean phase confidence of each target individual:
 ID	PHASE_CONFIDENCE

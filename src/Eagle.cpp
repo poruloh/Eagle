@@ -45,6 +45,7 @@
 #include "StringUtils.hpp"
 #include "Timer.hpp"
 #include "HapHedge.hpp"
+#include "Version.hpp"
 #include "Eagle.hpp"
 
 //#define DETAILS
@@ -3142,16 +3143,38 @@ namespace EAGLE {
     sampleOut.close();
   }
 
+  void bcf_hdr_append_eagle_version(bcf_hdr_t *hdr, int argc, char **argv)
+  {
+    kstring_t str = {0,0,0};
+    const char cmd[] = "eagle";
+    ksprintf(&str,"##%sVersion=%s+htslib-%s\n", cmd, EAGLE_VERSION, hts_version());
+    bcf_hdr_append(hdr,str.s);
+
+    str.l = 0;
+    ksprintf(&str,"##%sCommand=%s", cmd, "eagle");
+    int i;
+    for (i=1; i<argc; i++)
+      {
+        if ( strchr(argv[i],' ') )
+	  ksprintf(&str, " '%s'", argv[i]);
+        else
+	  ksprintf(&str, " %s", argv[i]);
+      }
+    kputc('\n', &str);
+    bcf_hdr_append(hdr,str.s);
+    free(str.s);
+
+    bcf_hdr_sync(hdr);
+  }
+
   void Eagle::writeVcf(const string &tmpFile, const string &outFile, double bpStart, double bpEnd,
-		       const string &writeMode, bool noImpMissing) const {
+		       const string &writeMode, bool noImpMissing, int argc, char **argv) const {
 
     htsFile *htsTmp = hts_open(tmpFile.c_str(), "r");
     htsFile *out = hts_open(outFile.c_str(), writeMode.c_str());
     
     bcf_hdr_t *hdr = bcf_hdr_read(htsTmp);
-    char eagleVersionLine[1000];
-    sprintf(eagleVersionLine, "##eagle_version=%s", version);
-    bcf_hdr_append(hdr, eagleVersionLine);
+    bcf_hdr_append_eagle_version(hdr, argc, argv);
     bcf_hdr_write(out, hdr);
 
     bcf1_t *rec = bcf_init1();
