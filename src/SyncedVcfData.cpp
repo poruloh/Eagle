@@ -133,6 +133,18 @@ namespace EAGLE {
     bcf_srs_t *sr = bcf_sr_init();
     sr->require_index = 1;
 
+    if ( chrom!=0 )
+    {
+        kstring_t str = {0,0,0};
+        ksprintf(&str,"%d:%d-%d",chrom,(uint32_t)bpStart,(uint32_t)bpEnd);
+        if ( bcf_sr_set_regions(sr, str.s, 0)!=0 )
+        {
+            cerr << "ERROR: failed to initialize the region:" << str.s;
+            exit(1);
+        }
+        free(str.s);
+    }
+
     // By default, the synced reader requires that CHR, POS and ALT are the same
     // in both files. If this is too strict and SNP/indel/all lines with the same
     // position should be considered as matching, uncomment:
@@ -185,6 +197,7 @@ namespace EAGLE {
 
     int mref_gt = 0, *ref_gt = NULL;
     int mtgt_gt = 0, *tgt_gt = NULL;
+    int prev_rid = -1, chr; // chromosome BCF id and human-readable numeric id
     while ( bcf_sr_next_line(sr) )
       {
 	bcf1_t *ref = bcf_sr_get_line(sr, 0);
@@ -212,28 +225,28 @@ namespace EAGLE {
 	  continue;
 	}
 
-	int chr;
-	sscanf(bcf_hdr_id2name(tgt_hdr, tgt->rid), "%d", &chr);
-	if (!(chr >= 1 && chr <= 22)) {
-	  cerr << "ERROR: Invalid chromosome number: " << bcf_hdr_id2name(tgt_hdr, tgt->rid)
-	       << endl;
-	  exit(1);
-	}
-	if (chrom!=0 && chr!=chrom) {
-	  MnotOnChrom++;
-	  continue;
-	}
-
-	int bp = tgt->pos+1;
-	if (bp < bpStart || bp > bpEnd) {
-	  MnotInRegion++;
-	  continue;
-	}
+    // Check the chromosome: if region was requested (chrom is set), synced
+    // reader already positioned us in the right region. Otherwise, we process
+    // only the first chromosome in the file and quit
+    if ( prev_rid<0 ) 
+    { 
+        prev_rid = tgt->rid; 
+        if ( !chrom )   // learn the human readable id
+        {
+            sscanf(bcf_hdr_id2name(tgt_hdr, tgt->rid), "%d", &chr);
+            if (!(chr >= 1 && chr <= 22)) {
+                cerr << "ERROR: Invalid chromosome number: " << bcf_hdr_id2name(tgt_hdr, tgt->rid)
+                    << endl;
+                exit(1);
+            }
+        }
+    }
+    if ( prev_rid!=tgt->rid ) break;
 
 	M++; // SNP passes checks
 
 	// append chromosome number and base pair coordinate to chrBps
-	chrBps.push_back(make_pair(chr, bp));
+	chrBps.push_back(make_pair(chr, tgt->pos+1));
 
 	// process reference haplotypes: append 2*Nref entries (0/1 pairs) to hapsRef[]
 	// check for missing/unphased ref genos (missing -> REF allele; unphased -> random phase)
