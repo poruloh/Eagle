@@ -82,6 +82,7 @@ namespace EAGLE {
       ("vcfOutFormat", po::value<string>(&vcfOutFormat)->default_value("z"),
        "b|u|z|v: compressed BCF (b), uncomp BCF (u), compressed VCF (z), uncomp VCF (v)")
       ("noImpMissing", "disable imputation of missing ./. target genotypes")
+      ("allowRefAltSwap", "allow swapping of REF/ALT in target vs. ref VCF")
       ;
 
     po::options_description bothModes("Region selection options");
@@ -199,6 +200,7 @@ namespace EAGLE {
 
       noMapCheck = vm.count("noMapCheck");
       noImpMissing = vm.count("noImpMissing");
+      allowRefAltSwap = vm.count("allowRefAltSwap");
 
       if (vm.count("vcfRef") || vm.count("vcfTarget")) { // ref mode
 	if (vcfRef.empty()) {

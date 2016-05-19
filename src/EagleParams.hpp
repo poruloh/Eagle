@@ -45,6 +45,7 @@ namespace EAGLE {
     // outFormat b|u|z|v -> outSuffix bcf|bcf|vcf.gz|vcf, writeMode wb|wbu|wz|w
     bool noImpMissing;
 
+    bool allowRefAltSwap; // in reference-based phasing mode
     bool usePBWT;
     int pbwtIters;
 

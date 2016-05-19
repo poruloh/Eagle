@@ -40,8 +40,8 @@ namespace EAGLE {
     std::vector <std::string> targetIDs;
 
     std::vector < std::pair <int, int> > processVcfs
-    (const std::string &vcfRef, const std::string &vcfTarget, int chrom, double bpStart,
-     double bpEnd, std::vector <bool> &hapsRef, std::vector <uchar> &genosTarget,
+    (const std::string &vcfRef, const std::string &vcfTarget, bool allowRefAltSwap, int chrom,
+     double bpStart, double bpEnd, std::vector <bool> &hapsRef, std::vector <uchar> &genosTarget,
      const std::string &tmpFile, const std::string &writeMode);
     std::vector <double> processMap(std::vector < std::pair <int, int> > &chrBps,
 				    const std::string &geneticMapFile);
@@ -54,9 +54,9 @@ namespace EAGLE {
      * writes target[isec] to tmpFile
      * fills in cM coordinates and seg64cMvecs, genoBits
      */
-    SyncedVcfData(const std::string &vcfRef, const std::string &vcfTarget, int chrom,
-		  double bpStart, double bpEnd, const std::string &geneticMapFile, double cMmax,
-		  const std::string &tmpFile, const std::string &writeMode);
+    SyncedVcfData(const std::string &vcfRef, const std::string &vcfTarget, bool allowRefAltSwap,
+		  int chrom, double bpStart, double bpEnd, const std::string &geneticMapFile,
+		  double cMmax, const std::string &tmpFile, const std::string &writeMode);
 
     ~SyncedVcfData();
 

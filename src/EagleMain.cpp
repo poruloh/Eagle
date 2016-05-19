@@ -45,7 +45,7 @@ void phaseWithRef(const EagleParams &params, Timer &timer, double t0, int argc, 
 
   string tmpFile = params.outPrefix + ".unphased." + params.vcfOutSuffix;
   string outFile = params.outPrefix + "." + params.vcfOutSuffix;
-  SyncedVcfData vcfData(params.vcfRef, params.vcfTarget, params.chrom,
+  SyncedVcfData vcfData(params.vcfRef, params.vcfTarget, params.allowRefAltSwap, params.chrom,
 			params.bpStart-params.bpFlanking, params.bpEnd+params.bpFlanking,
 			params.geneticMapFile, params.cMmax==0 ? 1 : params.cMmax,
 			tmpFile, params.vcfWriteMode);

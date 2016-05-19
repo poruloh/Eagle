@@ -40,8 +40,8 @@ namespace EAGLE {
   using std::cerr;
   using std::endl;
 
-  void process_ref_genotypes(int nsmpl, int ngt, int32_t *gt, vector <bool> &hapsRef,
-			     int &numMissing, int &numUnphased, uint &w) {
+  void process_ref_genotypes(int nsmpl, int ngt, int32_t *gt, bool refAltSwap,
+			     vector <bool> &hapsRef, int &numMissing, int &numUnphased, uint &w) {
     numMissing = numUnphased = 0;
     if (ngt != 2*nsmpl) {
       cerr << "ERROR: ref ploidy != 2 (ngt != 2*nsmpl): ngt="
@@ -76,6 +76,10 @@ namespace EAGLE {
 	  if (haps[0] != haps[1] && ((w=18000*(w&65535)+(w>>16))&1))
 	    std::swap(haps[0], haps[1]); // randomize phasing
 	  numUnphased++;
+	}
+	if (refAltSwap) { // target REF/ALT are swapped relative to reference REF/ALT
+	  haps[0] = !haps[0];
+	  haps[1] = !haps[1];
 	}
 	hapsRef.push_back(haps[0]);
 	hapsRef.push_back(haps[1]);	  
@@ -124,8 +128,8 @@ namespace EAGLE {
   }
 
   vector < pair <int, int> > SyncedVcfData::processVcfs
-  (const string &vcfRef, const string &vcfTarget, int chrom, double bpStart, double bpEnd,
-   vector <bool> &hapsRef, vector <uchar> &genosTarget, const string &tmpFile,
+  (const string &vcfRef, const string &vcfTarget, bool allowRefAltSwap, int chrom, double bpStart,
+   double bpEnd, vector <bool> &hapsRef, vector <uchar> &genosTarget, const string &tmpFile,
    const string &writeMode) {
 
     vector < pair <int, int> > chrBps;
@@ -152,6 +156,9 @@ namespace EAGLE {
     //      sr->collapse = COLLAPSE_SNPS|COLLAPSE_INDELS;
     //
     // See also examples in bcftools/vcfisec etc.
+
+    if (allowRefAltSwap)
+      sr->collapse = COLLAPSE_SNPS|COLLAPSE_INDELS;
 
     if (!bcf_sr_add_reader(sr, vcfRef.c_str())) {
       cerr << "ERROR: Could not open " << vcfRef << " for reading: missing file or tabix index?"
@@ -192,6 +199,7 @@ namespace EAGLE {
     M = 0;
     uint MtargetOnly = 0, MrefOnly = 0, MmultiAllelic = 0, Mmonomorphic = 0;
     uint MwithMissingRef = 0, MwithUnphasedRef = 0, MnotInRegion = 0, MnotOnChrom = 0;
+    uint MrefAltError = 0, numRefAltSwaps = 0;
     uint64 GmissingRef = 0, GunphasedRef = 0, GmissingTarget = 0;
     uint w = 521288629; // fast rng: Marsaglia's MWC
 
@@ -225,6 +233,34 @@ namespace EAGLE {
 	  continue;
 	}
 
+	bool refAltSwap = false;
+
+        if (allowRefAltSwap) { // perform further error-checking
+	  if (tgt->n_allele != 2 || ref->n_allele != 2) {
+	    MrefAltError++;
+	    continue;
+	  }
+	  bcf_unpack(tgt, BCF_UN_STR); // unpack thru ALT
+	  bcf_unpack(ref, BCF_UN_STR); // unpack thru ALT
+	  /*
+	  printf("tgt REF=%s, ALT=%s   ref REF=%s, ALT=%s\n", tgt->d.allele[0], tgt->d.allele[1],
+		 ref->d.allele[0], ref->d.allele[1]);
+	  */
+	  if (strcmp(tgt->d.allele[0], ref->d.allele[0]) == 0 &&
+	      strcmp(tgt->d.allele[1], ref->d.allele[1]) == 0) {
+	    refAltSwap = false;
+	  }
+	  else if (strcmp(tgt->d.allele[0], ref->d.allele[1]) == 0 &&
+		   strcmp(tgt->d.allele[1], ref->d.allele[0]) == 0) {
+	    refAltSwap = true;
+	    numRefAltSwaps++;
+	  }
+	  else {
+	    MrefAltError++;
+	    continue;	    
+	  }
+	}
+
     // Check the chromosome: if region was requested (chrom is set), synced
     // reader already positioned us in the right region. Otherwise, we process
     // only the first chromosome in the file and quit
@@ -252,7 +288,8 @@ namespace EAGLE {
 	// check for missing/unphased ref genos (missing -> REF allele; unphased -> random phase)
 	int nref_gt = bcf_get_genotypes(ref_hdr, ref, &ref_gt, &mref_gt);
 	int numMissing, numUnphased;
-	process_ref_genotypes(Nref, nref_gt, ref_gt, hapsRef, numMissing, numUnphased, w);
+	process_ref_genotypes(Nref, nref_gt, ref_gt, refAltSwap, hapsRef, numMissing, numUnphased,
+			      w);
 	if (numMissing) MwithMissingRef++;
 	if (numUnphased) MwithUnphasedRef++;
 	GmissingRef += numMissing;
@@ -272,6 +309,9 @@ namespace EAGLE {
     free(tgt_gt);
 
     cout << "SNPs to analyze: M = " << M << " SNPs in both target and reference" << endl;
+    if (numRefAltSwaps)
+      cerr << "--> WARNING: REF/ALT were swapped in " << numRefAltSwaps << " of these SNPs <--"
+	   << endl;
     cout << endl;
     cout << "SNPs ignored: " << MtargetOnly << " SNPs in target but not reference" << endl;
     if (MtargetOnly > M/10U)
@@ -285,6 +325,8 @@ namespace EAGLE {
 	   << endl;
     cout << "              " << MmultiAllelic << " multi-allelic SNPs" << endl;
     cout << "              " << Mmonomorphic << " monomorphic SNPs" << endl;
+    if (MrefAltError)
+      cout << "              " << MrefAltError << " SNPs with REF/ALT matching errors" << endl;
     cout << endl;
     
     if (MwithMissingRef) {
@@ -368,16 +410,17 @@ namespace EAGLE {
    * writes target[isec] to tmpFile
    * fills in cM coordinates and seg64cMvecs, genoBits
    */
-  SyncedVcfData::SyncedVcfData(const string &vcfRef, const string &vcfTarget, int chrom,
-			       double bpStart, double bpEnd, const string &geneticMapFile,
-			       double cMmax, const string &tmpFile, const string &writeMode) {
+  SyncedVcfData::SyncedVcfData(const string &vcfRef, const string &vcfTarget, bool allowRefAltSwap,
+			       int chrom, double bpStart, double bpEnd,
+			       const string &geneticMapFile, double cMmax, const string &tmpFile,
+			       const string &writeMode) {
 
     // perform synced read
     vector <bool> hapsRef;     // M*2*Nref
     vector <uchar> genosTarget; // M*Ntarget
     vector < pair <int, int> > chrBps = 
-      processVcfs(vcfRef, vcfTarget, chrom, bpStart, bpEnd, hapsRef, genosTarget, tmpFile,
-		  writeMode);
+      processVcfs(vcfRef, vcfTarget, allowRefAltSwap, chrom, bpStart, bpEnd, hapsRef, genosTarget,
+		  tmpFile, writeMode);
 
     // interpolate genetic coordinates
     vector <double> cMs = processMap(chrBps, geneticMapFile);
