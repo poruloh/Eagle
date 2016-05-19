@@ -346,6 +346,11 @@ namespace EAGLE {
     cout << "Missing rate in target genotypes: " << GmissingTarget / (double) M / Ntarget << endl;
     cout << endl;
 
+    if (M <= 1U) {
+      cerr << endl << "ERROR: Target and ref have too few matching SNPs (M = " << M << ")" << endl;
+      exit(1);
+    }
+
     return chrBps;
   }
 
