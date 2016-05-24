@@ -20,6 +20,7 @@
 #include <iostream>
 
 #include "HapHedge.hpp"
+#include "MemoryUtils.hpp"
 #include "NumericUtils.hpp"
 #include "Eagle.hpp"
 
@@ -232,7 +233,7 @@ namespace EAGLE {
 
     uchar *rmHaps = NULL;
     if (2*n0 < (uint64) hapBitsT.getNhaps()) { // set rmHaps
-      rmHaps = (uchar *) malloc(M * sizeof(rmHaps[0]));
+      rmHaps = ALIGNED_MALLOC_UCHARS(M * sizeof(rmHaps[0]));
       for (int m = 0; m < M; m++)
 	rmHaps[m] = hapBitsT.getBit(2*n0, m) | (hapBitsT.getBit(2*n0+1, m)<<1);
     }
@@ -279,7 +280,7 @@ namespace EAGLE {
     }
 
     if (rmHaps != NULL)
-      free(rmHaps);    
+      ALIGNED_FREE(rmHaps);    
   }
 
 }

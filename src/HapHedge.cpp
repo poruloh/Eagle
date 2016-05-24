@@ -276,9 +276,9 @@ namespace EAGLE {
     : hapBitsT(_hapBitsT), Nhaps(hapBitsT.getNhaps()), invNhaps(1.0f/Nhaps) {
 
     seq0 = a[0];
-    nodes = (HapTreeNode *) malloc((Nhaps-1) * sizeof(nodes[0]));
+    nodes = (HapTreeNode *) ALIGNED_MALLOC((Nhaps-1) * sizeof(nodes[0]));
 
-    WorkTreeNode *workNodes = (WorkTreeNode *) malloc(Nhaps * sizeof(workNodes[0]));
+    WorkTreeNode *workNodes = (WorkTreeNode *) ALIGNED_MALLOC(Nhaps * sizeof(workNodes[0]));
 
     // perform in-order traversal
     workNodes[0] = WorkTreeNode(-1, a[0], 0, -1, -1, -1);
@@ -308,10 +308,10 @@ namespace EAGLE {
     int pos = 0;
     dfsPreOrder(workNodes, nodes, pos, workNodes[0].right);
 
-    free(workNodes);
+    ALIGNED_FREE(workNodes);
   }
   HapTree::~HapTree(void) {
-    free(nodes);
+    ALIGNED_FREE(nodes);
   }
   float HapTree::getInvNhaps(void) const {
     return invNhaps;
@@ -373,14 +373,14 @@ namespace EAGLE {
       }
     }
 
-    nodes = (HapTreeMultiNode *) malloc((uniqHaps-1) * sizeof(nodes[0]));
+    nodes = (HapTreeMultiNode *) ALIGNED_MALLOC((uniqHaps-1) * sizeof(nodes[0]));
 
     rootState.seq = ad[0].a; rootState.node = workNodes[0].right==-1?-1:0; rootState.count = Nhaps;
     int pos = 0;
     dfsPreOrderMulti(workNodes, nodes, pos, workNodes[0].right);
   }
   HapTreeMulti::~HapTreeMulti(void) {
-    free(nodes);
+    ALIGNED_FREE(nodes);
   }
   float HapTreeMulti::getInvNhaps(void) const {
     return invNhaps;
@@ -491,7 +491,7 @@ namespace EAGLE {
 
     // initialize work arrays
     SortDiv *ad = new SortDiv[N+1], *ad1 = new SortDiv[N+1]; // N+1 for convenience below
-    WorkTreeNode *workNodes = (WorkTreeNode *) malloc(N * sizeof(workNodes[0]));
+    WorkTreeNode *workNodes = (WorkTreeNode *) ALIGNED_MALLOC(N * sizeof(workNodes[0]));
     for (int n = 0; n <= N; n++) { // N+1 for convenience below
       ad[n].a = n;
       ad[n].d = M;
@@ -547,7 +547,7 @@ namespace EAGLE {
 
     delete[] curBits8;
     delete[] curBits64;
-    free(workNodes);
+    ALIGNED_FREE(workNodes);
     delete[] ad1;
     delete[] ad;
   }
