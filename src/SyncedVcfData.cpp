@@ -441,6 +441,15 @@ namespace EAGLE {
     cout << "Average # SNPs per cM:   " << (int) (M/cMrange + 0.5)
 	 << "   (recommended: 50-500 SNPs/cM)" << endl;
 
+    if (physRange == 0 || cMrange == 0) {
+      cerr << "ERROR: Physical and genetic distance ranges must be positive" << endl;
+      cerr << "       First SNP: chr=" << chrBps[0].first << " pos=" << chrBps[0].second
+	   << " cM=" << cMs[0] << endl;
+      cerr << "       Last SNP:  chr=" << chrBps.back().first << " pos=" << chrBps.back().second
+	   << " cM=" << cMs.back() << endl;
+      exit(1);
+    }
+
     buildGenoBits(hapsRef, genosTarget, cMs, cMmax);
   }
 
