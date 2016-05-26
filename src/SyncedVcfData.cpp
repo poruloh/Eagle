@@ -205,7 +205,7 @@ namespace EAGLE {
 
     int mref_gt = 0, *ref_gt = NULL;
     int mtgt_gt = 0, *tgt_gt = NULL;
-    int prev_rid = -1, chr; // chromosome BCF id and human-readable numeric id
+    int prev_rid = -1; // chromosome BCF id and human-readable numeric id
     while ( bcf_sr_next_line(sr) )
       {
 	bcf1_t *ref = bcf_sr_get_line(sr, 0);
@@ -269,8 +269,8 @@ namespace EAGLE {
         prev_rid = tgt->rid; 
         if ( !chrom )   // learn the human readable id
         {
-            sscanf(bcf_hdr_id2name(tgt_hdr, tgt->rid), "%d", &chr);
-            if (!(chr >= 1 && chr <= 22)) {
+            sscanf(bcf_hdr_id2name(tgt_hdr, tgt->rid), "%d", &chrom);
+            if (!(chrom >= 1 && chrom <= 22)) {
                 cerr << "ERROR: Invalid chromosome number: " << bcf_hdr_id2name(tgt_hdr, tgt->rid)
                     << endl;
                 exit(1);
@@ -282,7 +282,7 @@ namespace EAGLE {
 	M++; // SNP passes checks
 
 	// append chromosome number and base pair coordinate to chrBps
-	chrBps.push_back(make_pair(chr, tgt->pos+1));
+	chrBps.push_back(make_pair(chrom, tgt->pos+1));
 
 	// process reference haplotypes: append 2*Nref entries (0/1 pairs) to hapsRef[]
 	// check for missing/unphased ref genos (missing -> REF allele; unphased -> random phase)

@@ -19,7 +19,7 @@
 #ifndef VERSION_HPP
 #define VERSION_HPP
 
-const char EAGLE_VERSION[] = "2.0.4"; // recompile Eagle and EagleMain upon modification
-const char EAGLE_VERSION_DATE[] = "May 24, 2016";
+const char EAGLE_VERSION[] = "2.0.5"; // recompile Eagle and EagleMain upon modification
+const char EAGLE_VERSION_DATE[] = "May 26, 2016";
 
 #endif
