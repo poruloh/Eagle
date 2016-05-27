@@ -416,7 +416,23 @@ namespace EAGLE {
       return true;
     }
   }
-
+  void HapTreeMulti::nextAtFrac(int m, HapTreeState &state, double nextFrac) const {
+    // see above for MEMORY-SAVING ALTERNATIVES
+    if (state.node == -1 || nodes[state.node].mSplit > m) {
+      return;
+    }
+    else {
+      if (nodes[state.node].count0 >= nextFrac * state.count) { // nextBit = 0
+	state.count = nodes[state.node].count0;
+	state.node = nodes[state.node].node0;
+      }
+      else {
+	state.count -= nodes[state.node].count0;
+	state.seq = nodes[state.node].seq1;
+	state.node = nodes[state.node].node1; // update last: overwrites state.node!
+      }
+    }
+  }
 
   HapHedge::HapHedge(const HapBitsT &_hapBitsT, int _skip/*, const vector <int> &treeStarts*/) :
     hapBitsT(_hapBitsT), skip(_skip), T((hapBitsT.getM()+skip-1) / skip) {
@@ -561,6 +577,9 @@ namespace EAGLE {
   };
   int HapHedgeErr::getNumTrees(void) const {
     return T;
+  }
+  const HapBitsT &HapHedgeErr::getHapBitsT() const {
+    return hapBitsT;
   }
 
 }

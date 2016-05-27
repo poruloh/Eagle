@@ -97,6 +97,7 @@ namespace EAGLE {
     float getInvNhaps(void) const;
     HapTreeState getRootState(void) const;
     bool next(int m, HapTreeState &state, int nextBit) const;
+    void nextAtFrac(int m, HapTreeState &state, double nextFrac) const;
   };
 
   class HapHedge {
@@ -122,6 +123,7 @@ namespace EAGLE {
     ~HapHedgeErr(void);
     const HapTreeMulti &getHapTreeMulti(int t) const;
     int getNumTrees(void) const;
+    const HapBitsT &getHapBitsT() const;
   };
 
 }

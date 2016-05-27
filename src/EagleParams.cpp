@@ -230,10 +230,12 @@ namespace EAGLE {
 	  cerr << "ERROR: --vcfOutFormat must be one of {b,u,z,v}" << endl;
 	  return false;
 	}
+	/*
 	if (pbwtIters > 1 && noImpMissing) {
 	  cerr << "ERROR: --pbwtIters cannot be greater than 1 if --noImpMissing is set" << endl;
 	  return false;
 	}
+	*/
 	if (bpFlanking < 0) {
 	  cerr << "ERROR: --bpFlanking cannot be negative" << endl;
 	  return false;
@@ -255,10 +257,12 @@ namespace EAGLE {
 	       << endl;
 	  return false;
 	}
+	/*
 	if (noImpMissing) {
 	  cerr << "ERROR: --noImpMissing is only supported in ref-mode" << endl;
 	  return false;
 	}
+	*/
 	if (bpFlanking != 0) {
 	  cerr << "ERROR: --bpFlanking is only supported in ref-mode" << endl;
 	  return false;

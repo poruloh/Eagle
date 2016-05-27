@@ -375,14 +375,14 @@ int main(int argc, char *argv[]) {
 	const uint64 numBatches = 10;
 	for (uint64 b = 1; b <= numBatches; b++) {
 	  cout << "BATCH " << b << " OF " << numBatches << endl;
-
+#ifdef OLD_IMP_MISSING
 	  cout << endl << "Making HapHedge" << endl;
 	  HapBitsT hapBitsT(eagle.getHaploBitsT(), 2*eagle.getNlib(2+iter),
 			    eagle.getMseg64(), eagle.getMaskSnps64j());
 	  HapHedge hapHedge(hapBitsT, skip);
 	  cout << "Built PBWT on " << hapBitsT.getNhaps() << " haplotypes" << endl;
 	  cout << "Time for HapHedge: " << timer.update_time() << endl;
-
+#endif
 	  if (b == 1)
 	    for (uint att = 0; att < min(9U, (uint) children.size()); att++) // run on trios
 	      eagle.runPBWT(children[att], nF1s[att], nF2s[att], Kpbwt, runReverse, true);
@@ -392,9 +392,11 @@ int main(int argc, char *argv[]) {
 #pragma omp parallel for reduction(+:timeImpMissing) schedule(dynamic, 4)
 	  for (uint i = iStart; i < iEnd; i++) {	
 	    eagle.runPBWT(i, -1, -1, Kpbwt, runReverse, true);
+#ifdef OLD_IMP_MISSING
 	    Timer tim;
 	    eagle.imputeMissing(hapHedge, i);
 	    timeImpMissing += tim.update_time();
+#endif
 	  }
 
 	  eagle.cpTmpHaploBitsT(iStart, iEnd);
@@ -402,8 +404,10 @@ int main(int argc, char *argv[]) {
 	}
 
 	cout << "Time for PBWT iter " << iter << ": " << (timer.get_time()-t23) << endl;
+#ifdef OLD_IMP_MISSING
 	cout << "Time for PBWT iter " << iter << " impMissing: "
 	     << timeImpMissing / params.numThreads << endl;
+#endif
 	//eagle.outputSE(children, nF1s, nF2s, step); // currently requires phaseConfs
       }
     }

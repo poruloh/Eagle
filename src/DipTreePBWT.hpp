@@ -21,49 +21,62 @@
 
 #include <vector>
 
+#include <boost/random.hpp>
+#include <boost/random/lagged_fibonacci.hpp>
+#include <boost/random/uniform_01.hpp>
+
 #include "HapHedge.hpp"
 
 namespace EAGLE {
 
   struct HapPathSplit {
-    int t; // new start
-    float relProbLastStop; // relative to cumLogP in HapPath
-    int hapPrefixInd;
-    int hapPrefixTo[2];
+    int t; // location of most recent start = tree index (note HapPath goes to tCur >= t)
+    float relProbLastStop; // cumP for path ending just before t, relative to
+                           // cumP = exp(cumLogP) for full HapPath ending just before tCur
+    int hapPrefixInd; // index (in HapWaves::hapPrefixes[curMod][.])
+                      // of the HapPrefix starting from t that ends the HapPath
+    int hapPrefixTo[2]; // indices (in HapWaves::hapPrefixes[nextMod][.])
+                        // of the extended HapPrefixes starting from t that have 0 (resp. 1)
+                        // at split site tCur (i.e, bit 2*tCur) and no err (i.e., 0) at 2*tCur+1
     HapPathSplit(void);
-    HapPathSplit(int _t);
+    HapPathSplit(int _t); // split corresponding to new start at tCur=_t (i.e., root state)
     HapPathSplit(int _t, float relProb, int ind);
   };
 
   struct HapPath {
-    float cumLogP;
+    float cumLogP; // log(cumP) for this path ending just before tCur
     int splitListLength;
-    HapPathSplit *splitList; // [max size = histLength]
-    int to[2];
-    float toCumLogP[2];
+    HapPathSplit *splitList; // [max size = histLength] list of prev split points, probs, prefixes
+    int to[2]; // index of extension to bit = 0 (resp. 1) at split site tCur (i.e., HapPath tCur+1)
+    float toCumLogP[2]; // log(cumP) for extended path
     HapPath(void);
   };
 
   struct HapPrefix {
-    HapTreeState state;
+    HapTreeState state; // state in tree getHapTreeMulti(split.t)
     //int to[2];
-    float toHetOnlyProb[2];
+    float toHetOnlyProb[2]; // probability of extension to bit = 0 (resp. 1) at split site tCur
     HapPrefix(void);
     HapPrefix(const HapTreeState &_state);
   };
 
+#define HAPWAVES_HIST 25
+
   class HapWaves {
+
+    boost::lagged_fibonacci607 rng;
+    boost::variate_generator<boost::lagged_fibonacci607&, boost::uniform_01<> > rand01;
 
     const HapHedgeErr &hapHedge;
     const std::vector <float> &cMcoords;
     const int histLength, beamWidth;
     const float pErr;
     const int maxHapPaths, maxHapPrefixes;
-    int tCur, curParity, nextParity;
-    int hapPathSizes[2];
-    HapPath *hapPaths[2]; // [max size = 2*beamWidth each]
-    int hapPrefixSizes[2];
-    HapPrefix *hapPrefixes[2]; // [max size = 2*beamWidth * histLength * 2 each]
+    int tCur, curMod, nextMod;
+    int hapPathSizes[HAPWAVES_HIST];
+    HapPath *hapPaths[HAPWAVES_HIST]; // [max size = 2*beamWidth each]
+    int hapPrefixSizes[HAPWAVES_HIST];
+    HapPrefix *hapPrefixes[HAPWAVES_HIST]; // [max size = 2*beamWidth * histLength * 2 each]
 
   public:
     
@@ -71,18 +84,19 @@ namespace EAGLE {
 	     int _histLength, int _beamWidth, float _logPerr, int _tCur);
     ~HapWaves(void);
 
-    // populate hapPrefixes[nextParity]
-    // populate toCumLogP[] in hapPaths[curParity] (but don't populate hapPaths[nextParity])
+    // populate hapPrefixes[nextMod]
+    // populate toCumLogP[] in hapPaths[curMod] (but don't populate hapPaths[nextMod])
     void computeAllExtensions(const std::vector <uchar> &nextPossibleBits);
 
     float getToCumLogProb(int ind, int nextBit) const;
 
-    // look up/create extension of hapPaths[curParity][ind] in hapPaths[nextParity]
-    // return index in hapPaths[nextParity]
+    // look up/create extension of hapPaths[curMod][ind] in hapPaths[nextMod]
+    // return index in hapPaths[nextMod]
     int extendPath(int ind, int nextBit);
     
     void advance(void);
 
+    void sampleLastPrefix(int &tStart, HapTreeState &state, int t, int hapPathInd, int tBit);
   };
 
   struct DipTreeNode {
@@ -103,6 +117,11 @@ namespace EAGLE {
   // no hom err constraints (i.e., 0|0 at 0, 1|1 at 2) are encoded as 0 or 1 (i.e., dist=0 above)
 
   class DipTree {
+
+    boost::lagged_fibonacci607 rng;
+    boost::variate_generator<boost::lagged_fibonacci607&, boost::uniform_01<> > rand01;
+
+    const HapHedgeErr &hapHedge;
     HapWaves hapWaves;
     const std::vector <uchar> &genos;
     const char *constraints;
@@ -125,6 +144,8 @@ namespace EAGLE {
     float callProbAA(int tCallLoc1, int tCallLoc2, int callLength);
     // compute diploid dosage at tCallLoc
     float callDosage(int tCallLoc, int callLength);
+
+    std::vector < std::pair <int, int> > sampleRefs(int tCallLoc, int callLength, int samples);
   };
 
 }

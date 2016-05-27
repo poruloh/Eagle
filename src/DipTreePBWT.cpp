@@ -26,6 +26,10 @@
 #include <cstring>
 #include <cassert>
 
+#include <boost/random.hpp>
+#include <boost/random/lagged_fibonacci.hpp>
+#include <boost/random/uniform_01.hpp>
+
 #include "HapHedge.hpp"
 #include "NumericUtils.hpp"
 #include "Timer.hpp"
@@ -69,13 +73,14 @@ namespace EAGLE {
 
   HapWaves::HapWaves(const HapHedgeErr &_hapHedge, const vector <float> &_cMcoords,
 		     int _histLength, int _beamWidth, float _logPerr, int _tCur) :
+    rng(123), rand01(rng, boost::uniform_01<>()),
     hapHedge(_hapHedge), cMcoords(_cMcoords), histLength(_histLength),
     beamWidth(_beamWidth), pErr(expf(_logPerr)), maxHapPaths(2*beamWidth),
     maxHapPrefixes(maxHapPaths*histLength*2+1), tCur(_tCur) {
 
-    curParity = tCur&1; nextParity = 1-curParity;
+    curMod = tCur % HAPWAVES_HIST; nextMod = (tCur+1) % HAPWAVES_HIST;
 
-    for (int p = 0; p < 2; p++) {
+    for (int p = 0; p < HAPWAVES_HIST; p++) {
       hapPathSizes[p] = 0;
       hapPaths[p] = new HapPath[maxHapPaths];
       for (int i = 0; i < maxHapPaths; i++)
@@ -84,19 +89,19 @@ namespace EAGLE {
     }
 
     // add root of 0th HapTree as cur HapPath
-    hapPaths[curParity][0].cumLogP = 0;
-    hapPaths[curParity][0].splitListLength = 1;
-    hapPaths[curParity][0].splitList[0] = HapPathSplit(tCur);
-    hapPaths[curParity][0].to[0] = hapPaths[0][0].to[1] = TO_UNKNOWN;
-    hapPathSizes[curParity] = 1;
+    hapPaths[curMod][0].cumLogP = 0;
+    hapPaths[curMod][0].splitListLength = 1;
+    hapPaths[curMod][0].splitList[0] = HapPathSplit(tCur);
+    hapPaths[curMod][0].to[0] = hapPaths[0][0].to[1] = TO_UNKNOWN;
+    hapPathSizes[curMod] = 1;
       
-    hapPrefixes[curParity][0] = HapPrefix(hapHedge.getHapTreeMulti(tCur).getRootState());
-    hapPrefixSizes[curParity] = 1;
+    hapPrefixes[curMod][0] = HapPrefix(hapHedge.getHapTreeMulti(tCur).getRootState());
+    hapPrefixSizes[curMod] = 1;
 
   }
 
   HapWaves::~HapWaves(void) {
-    for (int p = 0; p < 2; p++) {
+    for (int p = 0; p < HAPWAVES_HIST; p++) {
       for (int i = 0; i < maxHapPaths; i++)
 	delete[] hapPaths[p][i].splitList;
       delete[] hapPaths[p];
@@ -104,79 +109,82 @@ namespace EAGLE {
     }
   }
 
-  // populate hapPrefixes[nextParity]
-  // populate toCumLogP[] in hapPaths[curParity] (but don't populate hapPaths[nextParity])
+  float recombP(int tCur, int tSplit, const vector <float> &cMcoords) {
+    if (tCur+1 == (int) cMcoords.size()) return 1.0f;
+    else {
+      const float cMpseudo = 2.0f, minRecombP = 0.000001f, maxRecombP = 1.0f;//pErr;
+      return std::max(std::min(3 * (cMcoords[tCur+1]-cMcoords[tCur])
+			       / (cMpseudo + 2*(cMcoords[tCur+1]-cMcoords[tSplit])),
+			       maxRecombP), minRecombP);
+    }
+  }
+
+  // populate hapPrefixes[nextMod]
+  // populate toCumLogP[] in hapPaths[curMod] (but don't populate hapPaths[nextMod])
   void HapWaves::computeAllExtensions(const vector <uchar> &nextPossibleBits) {
     // add root of next (= new cur) HapTree as beginning of HapPrefix list
     if (tCur+1 < (int) cMcoords.size()) {
-      hapPrefixes[nextParity][0] = HapPrefix(hapHedge.getHapTreeMulti(tCur+1).getRootState());
-      hapPrefixSizes[nextParity] = 1;
+      hapPrefixes[nextMod][0] = HapPrefix(hapHedge.getHapTreeMulti(tCur+1).getRootState());
+      hapPrefixSizes[nextMod] = 1;
     }
     
     float mult = hapHedge.getHapTreeMulti(tCur).getInvNhaps();
 
     // iterate over paths
-    for (int i = 0; i < hapPathSizes[curParity]; i++) {
+    for (int i = 0; i < hapPathSizes[curMod]; i++) {
       float relProbStopNext[2] = {0, 0};
       // iterate over splits
-      for (int j = 0; j < hapPaths[curParity][i].splitListLength; j++) {
-	HapPathSplit &split = hapPaths[curParity][i].splitList[j];
+      for (int j = 0; j < hapPaths[curMod][i].splitListLength; j++) {
+	HapPathSplit &split = hapPaths[curMod][i].splitList[j];
 	// iterate over next possible bits
 	for (int b = 0; b < 2; b++) {
 	  if (!((nextPossibleBits[i]>>b)&1)) continue;
-	  HapPrefix &hapPrefix = hapPrefixes[curParity][split.hapPrefixInd];
+	  HapPrefix &hapPrefix = hapPrefixes[curMod][split.hapPrefixInd];
 	  // if extension of hap prefix hasn't been attempted, attempt to perform extension
 	  if (split.hapPrefixTo[b] == TO_UNKNOWN) {
 	    split.hapPrefixTo[b] = TO_NONE; // default: can't extend (overwrite if path found)
 	    hapPrefix.toHetOnlyProb[b] = 0;
 	    // try to extend hap prefix:
-	    // fill in split.hapPrefixTo[b], hapPrefixes[curParity][split.hapPrefixInd].to*[b]
+	    // fill in split.hapPrefixTo[b], hapPrefixes[curMod][split.hapPrefixInd].to*[b]
 	    const HapTreeMulti &hapTree = hapHedge.getHapTreeMulti(split.t);
 
 	    HapTreeState state = hapPrefix.state;
 	    if (hapTree.next(2*tCur, state, b)) { // can extend to match at het
 	      hapPrefix.toHetOnlyProb[b] += mult * state.count;
 	      if (hapTree.next(2*tCur+1, state, 0)) { // no err in inter-het region
-		// create and link new HapPrefix node in hapPrefixes[nextParity]; link
-		split.hapPrefixTo[b] = hapPrefixSizes[nextParity]++;
-		hapPrefixes[nextParity][split.hapPrefixTo[b]].state = state;
+		// create and link new HapPrefix node in hapPrefixes[nextMod]; link
+		split.hapPrefixTo[b] = hapPrefixSizes[nextMod]++;
+		hapPrefixes[nextMod][split.hapPrefixTo[b]].state = state;
 	      }
 	    }
 	  }
-	  float recombP;
-	  if (tCur+1 == (int) cMcoords.size()) recombP = 1.0f;
-	  else {
-	    const float cMpseudo = 2.0f, minRecombP = 0.000001f, maxRecombP = 1.0f;//pErr;
-	    recombP = std::max(std::min(3 * (cMcoords[tCur+1]-cMcoords[tCur])
-					/ (cMpseudo + 2*(cMcoords[tCur+1]-cMcoords[split.t])),
-					maxRecombP), minRecombP);
-	  }
-	  relProbStopNext[b] += split.relProbLastStop * hapPrefix.toHetOnlyProb[b] * recombP;
+	  relProbStopNext[b] += split.relProbLastStop * hapPrefix.toHetOnlyProb[b]
+	    * recombP(tCur, split.t, cMcoords);
 	}
       }
       for (int b = 0; b < 2; b++) {
 	if (!((nextPossibleBits[i]>>b)&1)) continue;
 	float relLogP = -1000;
 	if (relProbStopNext[b] != 0) relLogP = logf(relProbStopNext[b]);
-	hapPaths[curParity][i].toCumLogP[b] =
-	  hapPaths[curParity][i].cumLogP + relLogP;// + recombLogPs[tCur];
+	hapPaths[curMod][i].toCumLogP[b] =
+	  hapPaths[curMod][i].cumLogP + relLogP;// + recombLogPs[tCur];
       }
     }
   }
 
   float HapWaves::getToCumLogProb(int ind, int nextBit) const {
-    return hapPaths[curParity][ind].toCumLogP[nextBit];
+    return hapPaths[curMod][ind].toCumLogP[nextBit];
   }
 
-  // look up/create extension of hapPaths[curParity][ind] in hapPaths[nextParity]
-  // return index in hapPaths[nextParity]
+  // look up/create extension of hapPaths[curMod][ind] in hapPaths[nextMod]
+  // return index in hapPaths[nextMod]
   int HapWaves::extendPath(int ind, int nextBit) {
-    HapPath &curHapPath = hapPaths[curParity][ind];
+    HapPath &curHapPath = hapPaths[curMod][ind];
     if (curHapPath.to[nextBit] == TO_UNKNOWN) {
-      int nextInd = hapPathSizes[nextParity]++;
-      assert(hapPathSizes[nextParity]<=maxHapPaths);
+      int nextInd = hapPathSizes[nextMod]++;
+      assert(hapPathSizes[nextMod]<=maxHapPaths);
       curHapPath.to[nextBit] = nextInd;
-      HapPath &nextHapPath = hapPaths[nextParity][nextInd];
+      HapPath &nextHapPath = hapPaths[nextMod][nextInd];
       nextHapPath.cumLogP = curHapPath.toCumLogP[nextBit];
       float calibP = expf(curHapPath.cumLogP - nextHapPath.cumLogP);
       int &nSplit = nextHapPath.splitListLength; nSplit = 0;
@@ -196,9 +204,42 @@ namespace EAGLE {
   }
     
   void HapWaves::advance(void) {
-    tCur++; curParity = tCur&1; nextParity = 1-curParity;
-    hapPathSizes[nextParity] = 0;
-    hapPrefixSizes[nextParity] = 0;
+    tCur++; curMod = tCur % HAPWAVES_HIST; nextMod = (tCur+1) % HAPWAVES_HIST;
+    hapPathSizes[nextMod] = 0;
+    hapPrefixSizes[nextMod] = 0;
+  }
+
+  void HapWaves::sampleLastPrefix(int &tStart, HapTreeState &state, int t, int hapPathInd,
+				  int tBit) {
+    assert(tCur+1 - t < HAPWAVES_HIST);
+    int tMod = t % HAPWAVES_HIST;
+    const HapPath &hapPath = hapPaths[tMod][hapPathInd];
+    
+    float relProbStopNext = 0;
+
+    vector <float> cumRelProbStopNext(hapPath.splitListLength);
+    for (int j = 0; j < hapPath.splitListLength; j++) {
+      const HapPathSplit &split = hapPath.splitList[j];
+      const HapPrefix &hapPrefix = hapPrefixes[tMod][split.hapPrefixInd];
+      relProbStopNext += split.relProbLastStop * hapPrefix.toHetOnlyProb[tBit]
+	* recombP(t, split.t, cMcoords);
+      cumRelProbStopNext[j] = relProbStopNext;
+    }
+
+    float relLogP = -1000;
+    if (relProbStopNext != 0) relLogP = logf(relProbStopNext);
+    assert(hapPaths[tMod][hapPathInd].toCumLogP[tBit] == hapPath.cumLogP + relLogP);
+
+    float r = rand01();
+
+    for (int j = 0; j < hapPath.splitListLength; j++)
+      if (cumRelProbStopNext[j]/relProbStopNext > r || j+1 == hapPath.splitListLength) {
+	const HapPathSplit &split = hapPath.splitList[j];
+	const HapPrefix &hapPrefix = hapPrefixes[tMod][split.hapPrefixInd];
+	tStart = split.t;
+	state = hapPrefix.state;
+	return;
+      }
   }
 
 
@@ -228,7 +269,7 @@ namespace EAGLE {
     bool isOppConstrained = constraints[tCur]==OPP_CONSTRAINT; // constrained to be 0|1 or 1|0
     bool isFullyConstrained = !isOppConstrained && constraints[tCur]!=NO_CONSTRAINT;
     
-    // populate next possible bits: nextPossibleBits[i] corresponds to hapPaths[curParity][i]
+    // populate next possible bits: nextPossibleBits[i] corresponds to hapPaths[curMod][i]
     //                              for i = dNode.hapPathInds[0], dNode.hapPathInds[1]
     vector <uchar> nextPossibleBits(2*beamWidth);
     int checkWidth = std::min((int) nodes[tCur].size(), beamWidth);
@@ -349,7 +390,8 @@ namespace EAGLE {
   DipTree::DipTree(const HapHedgeErr &_hapHedge, const vector <uchar> &_genos,
 		   const char *_constraints, const vector <float> &_cMcoords,
 		   int _histLength, int _beamWidth, float _logPerr, int _tCur) :
-    hapWaves(_hapHedge, _cMcoords, _histLength, _beamWidth, _logPerr, _tCur),
+    rng(12345), rand01(rng, boost::uniform_01<>()),
+    hapHedge(_hapHedge), hapWaves(_hapHedge, _cMcoords, _histLength, _beamWidth, _logPerr, _tCur),
     genos(_genos), constraints(_constraints), histLength(_histLength), beamWidth(_beamWidth),
     logPerr(_logPerr), tCur(_tCur), T(_hapHedge.getNumTrees()), nodes(T+1), normProbs(T+1) {
 
@@ -407,6 +449,78 @@ namespace EAGLE {
     }
     if (probTot == 0) return 1.0;
     return prob1 / probTot;
+  }
+
+  vector < pair <int, int> > DipTree::sampleRefs(int tCallLoc, int callLength, int samples) {
+    assert(tCallLoc>0 && tCallLoc<T);
+    int tFront = std::min(T, tCallLoc + callLength);
+    while (tCur < tFront)
+      advance();
+
+    float probTot = 0;
+    for (int i = 0; i < (int) nodes[tFront].size(); i++)
+      probTot += normProbs[tFront][i];
+
+    vector < std::pair <int, int> > ret;
+
+    int lengths[samples][2];
+    for (int s = 0; s < samples; s++) {
+      float r = rand01();
+      float cumProb = 0;
+      for (int i = 0; i < (int) nodes[tFront].size(); i++) {
+	cumProb += normProbs[tFront][i] / probTot;
+	if (cumProb > r || i+1 == (int) nodes[tFront].size()) {
+	  int refs[2] = {-1, -1};
+	  for (int h = 0; h < 2; h++) {
+	    int t = tFront, tStart = tFront;
+	    int ind = i;
+	    HapTreeState state; int tBit = 0;
+	    while (tCallLoc < tStart) {
+	      while (t != tStart) // rewind DipTree from t to tStart
+		ind = nodes[t--][ind].from;
+	      tBit = h==0 ? nodes[t][ind].hapMat : nodes[t][ind].hapPat; // allele at tStart-1
+	      ind = nodes[t--][ind].from; // move t back 1; now tBit is allele at t = tStart-1
+	      hapWaves.sampleLastPrefix(tStart, state, t, nodes[t][ind].hapPathInds[h], tBit);
+	      lengths[s][h] = t-tStart;
+	    }
+	    const HapTreeMulti &hapTree = hapHedge.getHapTreeMulti(tStart);
+	    assert(hapTree.next(2*t, state, tBit)); // extend state to bit=tBit @ t
+
+	    // randomly sample from this prefix, moving up to 10 hets ahead
+	    for (int m = 2*t+1; m < 2*T && m < 2*t+20; m++) {
+	      if (m % 2 == 1) // error bit: extend to 0-err hom region if possible
+		hapTree.nextAtFrac(m, state, 0);
+	      else // het bit: randomly choose extension
+		hapTree.nextAtFrac(m, state, rand01());
+	    }
+
+	    int refSeq = state.seq; 
+
+	    const HapBitsT &hapBitsT = hapHedge.getHapBitsT();
+	    /*
+	    // check tStart..t of refSeq matches geno
+	    for (int m = 2*tStart+1; m <= 2*t; m += 2)
+	      assert(hapBitsT.getBit(refSeq, m)==0);
+	    */
+	    refs[hapBitsT.getBit(refSeq, 2*tCallLoc)] = refSeq;
+	  }
+	  if (refs[0] != -1 && refs[1] != -1) // no genotype error; one parent with each allele
+	    ret.push_back(make_pair(refs[0], refs[1]));
+	  break;
+	}
+      }
+    }
+    /*
+    if (tCallLoc % 100 == 0) {
+      for (int h = 0; h < 2; h++) {
+	for (int s = 0; s < samples; s++)
+	  cout << lengths[s][h] << " ";
+	cout << "     ";
+      }
+      cout << endl;
+    }
+    */
+    return ret;
   }
 
 }
