@@ -451,8 +451,34 @@ namespace EAGLE {
     return prob1 / probTot;
   }
 
-  vector < pair <int, int> > DipTree::sampleRefs(int tCallLoc, int callLength, int samples) {
-    assert(tCallLoc>0 && tCallLoc<T);
+  // note: part of this backtrace is already performed in sampleRefs(); can optimize if need be
+  void computeHetMasks(RefHap &refHap, const vector < vector <DipTreeNode> > &nodes, int tCallLoc,
+		       int t, int ind, int h, bool isFwd) {
+    refHap.tMaskFwd = refHap.tMaskRev = 0;
+    const int maxShift = 8*sizeof(refHap.tMaskFwd);
+    while (t > 0) { // rewind DipTree
+      int t1Bit = h==0 ? nodes[t][ind].hapMat : nodes[t][ind].hapPat; // allele at t-1
+      int dist = t-1 - tCallLoc;
+      if (dist <= 0) dist--;
+      if (dist < -maxShift) break;
+      else if (dist <= maxShift) {
+	int t1BitShift = t1Bit<<(abs(dist)-1);
+	if (isFwd == (dist > 0)) refHap.tMaskFwd |= t1BitShift;
+	else refHap.tMaskRev |= t1BitShift;
+      }
+      ind = nodes[t--][ind].from;
+    }
+  }
+
+  vector <HapPair> DipTree::sampleRefs(int tCallLoc, int callLength, int samples,
+				       const vector <uint> &bestHaps, bool isFwd) {
+    if (callLength > HAPWAVES_HIST-5) {
+      cerr << "ERROR in DipTree::sampleRefs(): callLength=" << callLength << ", HAPWAVES_HIST="
+	   << HAPWAVES_HIST << endl;
+      cerr << "      To use this callLength, increase HAPWAVES_HIST and recompile" << endl;
+      assert(callLength <= HAPWAVES_HIST-5);
+    }
+    assert(tCallLoc>=0 && tCallLoc<T);
     int tFront = std::min(T, tCallLoc + callLength);
     while (tCur < tFront)
       advance();
@@ -461,27 +487,31 @@ namespace EAGLE {
     for (int i = 0; i < (int) nodes[tFront].size(); i++)
       probTot += normProbs[tFront][i];
 
-    vector < std::pair <int, int> > ret;
+    vector <HapPair> ret(samples);
 
-    int lengths[samples][2];
     for (int s = 0; s < samples; s++) {
       float r = rand01();
       float cumProb = 0;
       for (int i = 0; i < (int) nodes[tFront].size(); i++) {
 	cumProb += normProbs[tFront][i] / probTot;
 	if (cumProb > r || i+1 == (int) nodes[tFront].size()) {
-	  int refs[2] = {-1, -1};
 	  for (int h = 0; h < 2; h++) {
 	    int t = tFront, tStart = tFront;
 	    int ind = i;
+
+	    // set ret[s].haps[h].tMask{Fwd,Rev}
+	    computeHetMasks(ret[s].haps[h], nodes, tCallLoc, t, ind, h, isFwd);
+
 	    HapTreeState state; int tBit = 0;
+	    ret[s].haps[h].isEnd = false;
 	    while (tCallLoc < tStart) {
+	      if (tStart==tCallLoc+1) ret[s].haps[h].isEnd = true;
 	      while (t != tStart) // rewind DipTree from t to tStart
 		ind = nodes[t--][ind].from;
 	      tBit = h==0 ? nodes[t][ind].hapMat : nodes[t][ind].hapPat; // allele at tStart-1
 	      ind = nodes[t--][ind].from; // move t back 1; now tBit is allele at t = tStart-1
 	      hapWaves.sampleLastPrefix(tStart, state, t, nodes[t][ind].hapPathInds[h], tBit);
-	      lengths[s][h] = t-tStart;
+	      ret[s].haps[h].tLength = t-tStart;
 	    }
 	    const HapTreeMulti &hapTree = hapHedge.getHapTreeMulti(tStart);
 	    assert(hapTree.next(2*t, state, tBit)); // extend state to bit=tBit @ t
@@ -493,33 +523,20 @@ namespace EAGLE {
 	      else // het bit: randomly choose extension
 		hapTree.nextAtFrac(m, state, rand01());
 	    }
-
-	    int refSeq = state.seq; 
-
-	    const HapBitsT &hapBitsT = hapHedge.getHapBitsT();
 	    /*
+	    const HapBitsT &hapBitsT = hapHedge.getHapBitsT();
+	    int refSeq = state.seq; 
+	    // refSeq's bit at tCallLoc: hapBitsT.getBit(refSeq, 2*tCallLoc)
 	    // check tStart..t of refSeq matches geno
 	    for (int m = 2*tStart+1; m <= 2*t; m += 2)
 	      assert(hapBitsT.getBit(refSeq, m)==0);
 	    */
-	    refs[hapBitsT.getBit(refSeq, 2*tCallLoc)] = refSeq;
+	    ret[s].haps[h].refSeq = bestHaps[state.seq];
 	  }
-	  if (refs[0] != -1 && refs[1] != -1) // no genotype error; one parent with each allele
-	    ret.push_back(make_pair(refs[0], refs[1]));
 	  break;
 	}
       }
     }
-    /*
-    if (tCallLoc % 100 == 0) {
-      for (int h = 0; h < 2; h++) {
-	for (int s = 0; s < samples; s++)
-	  cout << lengths[s][h] << " ";
-	cout << "     ";
-      }
-      cout << endl;
-    }
-    */
     return ret;
   }
 

@@ -60,6 +60,18 @@ namespace EAGLE {
     HapPrefix(const HapTreeState &_state);
   };
 
+  struct RefHap {
+    uint refSeq;
+    short tLength;
+    bool isEnd;
+    short tMaskFwd, tMaskRev;
+  };
+  struct HapPair {
+    RefHap haps[2];
+  };
+
+// history length to save for sampling ref haps (for in-sample imputation):
+// needs to be a few splits longer than callLength passed to sampleRefs()
 #define HAPWAVES_HIST 25
 
   class HapWaves {
@@ -145,7 +157,8 @@ namespace EAGLE {
     // compute diploid dosage at tCallLoc
     float callDosage(int tCallLoc, int callLength);
 
-    std::vector < std::pair <int, int> > sampleRefs(int tCallLoc, int callLength, int samples);
+    std::vector <HapPair> sampleRefs(int tCallLoc, int callLength, int samples,
+				     const std::vector <uint> &bestHaps, bool isFwd);
   };
 
 }

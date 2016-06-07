@@ -85,7 +85,7 @@ namespace EAGLE {
   }
 
   float Eagle::runPBWT(uint64 n0, uint64 nF1, uint64 nF2, int Kpbwt, bool runReverse,
-		       bool useTargetHaps) {
+		       bool useTargetHaps, bool impMissing) {
 
     const int SPEED_FACTOR = 1; const float lnPerr = logf(powf(10.0f, logPerr));
 
@@ -108,14 +108,6 @@ namespace EAGLE {
     vector <uint64> pbwtBitsFine(Mseg64);
     float conf = 0;
 
-    vector < vector < std::pair <int, int> > > refSeqs(Mseg64*64); // for imputation
-
-    // check for 0 or 1 het (no need to phase)
-    if (hets64j.size() <= 1) {
-      cerr << "WARNING: Sample " << n0-Nref << " has a het count of " << hets64j.size() << endl;
-    }
-    else {
-
     // find split sites (for PBWT HapTree starts): hets and occasionally inter-het sites
     vector < pair <int, int> > tCallLocs; vector <int> tHomLocs;
     vector <uint64> splits64j;
@@ -137,12 +129,34 @@ namespace EAGLE {
     if (print)
       cout << "num hets: " << hets64j.size() << " num splits: " << splits64j.size() << endl;
     
+    // allocate storage for reference haplotype samples (to use if impMissing==true)
+    const int samples = 10;
+    vector < vector <HapPair> > refSamples[2];
+    refSamples[0].resize(splits64j.size()+1);
+    refSamples[1].resize(splits64j.size()+1);
+    // store which inter-split chunks contain at least one missing site
+    vector <bool> tHasMissing(splits64j.size()+1);
+    for (int t = 0; t <= (int) splits64j.size(); t++) {
+      uint64 m64jPrev = t==0 ? -1ULL : splits64j[t-1];
+      uint64 m64jNext = t==(int) splits64j.size() ? Mseg64*64 : splits64j[t];
+      for (uint64 m64j = m64jPrev+1; m64j < m64jNext; m64j++)
+	if (genos64j[m64j] == 3) // missing
+	  tHasMissing[t] = true;
+    }
+
     // create vector of genos at split sites (padded on left and right to match hapBitsT)
     vector <uchar> splitGenos;
     splitGenos.push_back(0); // pad on left with 0 (to match hapBitsT)
     for (uint64 s = 0; s < splits64j.size(); s++)
       splitGenos.push_back(genos64j[splits64j[s]]);
     splitGenos.push_back(0); // pad on right with 0 (to match hapBitsT)
+
+    // check for 0 or 1 het (no need to phase)
+    if (hets64j.size() <= 1) {
+      cerr << "WARNING: Sample " << n0-Nref << " has a het count of " << hets64j.size() << endl;
+      impMissing = false;
+    }
+    else {
 
     // compute recombination probabilities
     vector <float> cMcoords(splits64j.size()+2);
@@ -255,50 +269,17 @@ namespace EAGLE {
     // explore search space; make phase calls
     if (print) cout << "making phase calls (constr)... " << std::flush;
     const int callLengthFine = 20;
+    const int callLengthSample = 20;
+
+    // sample refs (BEFORE callProbAA: sampleRefs needs recent history that gets overwritten)
+    if (impMissing)
+      for (int t = 0; t < T-1; t++)
+	if (tHasMissing[t])
+	  refSamples[0][t] = dipTreeFine.sampleRefs(t, callLengthSample, samples, bestHaps, true);
+
     vector <float> probAAsCur;
     lastBit = 0;
     for (uint64 i = 0; i < tCallLocs.size(); i++) {
-      // note: need to sampleRefs() before callProbAA! callProbAA() may move tCur too far forward
-      int samples = 10;
-      uint64 m64jCall = splits64j[tCallLocs[i].first-1];
-      refSeqs[m64jCall] = dipTreeFine.sampleRefs(tCallLocs[i].first, callLengthFine, samples);
-      for (uint j = 0; j < refSeqs[m64jCall].size(); j++) {
-	refSeqs[m64jCall][j].first = bestHaps[refSeqs[m64jCall][j].first];
-	refSeqs[m64jCall][j].second = bestHaps[refSeqs[m64jCall][j].second];
-      }
-      /*
-      if (tCallLocs[i].first % 100 == 0) {
-	for (int h = 0; h < 2; h++) {
-	  for (uint j = 0; j < refSeqs[m64jCall].size(); j++) {
-	    uint64 nRef = (h==0 ? refSeqs[m64jCall][j].first : refSeqs[m64jCall][j].second);
-	    assert(((haploBitsT[nRef*Mseg64+m64jCall/64]>>(m64jCall&63))&1) == (uint64) h);
-	    uint64 m64jLeft = m64jCall;
-	    while (m64jLeft != -1ULL) {
-	      uint hap = ((haploBitsT[nRef*Mseg64+m64jLeft/64]>>(m64jLeft&63))&1);
-	      if ((genos64j[m64jLeft] == 0 && hap == 1) || (genos64j[m64jLeft] == 2 && hap == 0))
-		break;
-	      m64jLeft--;
-	    }
-	    m64jLeft++;
-	    uint64 m64jRight = m64jCall;
-	    while (m64jRight != Mseg64*64) {
-	      uint hap = ((haploBitsT[nRef*Mseg64+m64jRight/64]>>(m64jRight&63))&1);
-	      if ((genos64j[m64jRight] == 0 && hap == 1) || (genos64j[m64jRight] == 2 && hap == 0))
-		break;
-	      m64jRight++;
-	    }
-	    m64jRight--;
-	    printf("%.1f ", cMs64j[m64jRight] - cMs64j[m64jLeft]);
-	  }
-	  cout << "     ";
-	}
-	cout << endl;
-      }
-      */
-      // TODO: check haploBitsT at splits64j[tCallLocs[i].first-1]: mat+pat == 1?
-      //       if not, resample from non-het-err ref pairs... or maybe just delete?
-      //       if many bad, exclude from downstream analysis (specify min # good pairs?)
-
       float probAA = dipTreeFine.callProbAA(tCallLocs[i].first, tCallLocs[i].second,
 					    callLengthFine);
       probAAsCur.push_back(probAA);
@@ -338,6 +319,14 @@ namespace EAGLE {
 
       // explore search space; make phase calls
       if (print) cout << "making rev phase calls (con)..." << std::flush;
+
+      // sample refs (BEFORE callProbAA: sampleRefs needs recent history that gets overwritten)
+      if (impMissing)
+	for (int t = T-2; t >= 0; t--)
+	  if (tHasMissing[t])
+	    refSamples[1][t] =
+	      revDipTreeFine.sampleRefs(T-2-t, callLengthSample, samples, bestHaps, false);
+
       vector <uint64> revPbwtBitsFine(Mseg64);
       lastBit = 0;
       for (int i = tCallLocs.size()-1; i >= 0; i--) {
@@ -425,11 +414,8 @@ namespace EAGLE {
       tmpHaploBitsT[nTargetHap*Mseg64 + m64] = pbwtBitsFine[m64];
       tmpHaploBitsT[nTargetOpp*Mseg64 + m64] = ~pbwtBitsFine[m64];
     }
-
-    uint64 mPrevRefs = -1ULL, mNextRefs = 0;
-    while (mNextRefs < Mseg64*64 &&
-	   !(genos64j[mNextRefs] == 1 && !refSeqs[mNextRefs].empty()))
-      mNextRefs++;
+    
+    // set hom bits
     for (uint64 m64 = 0; m64 < Mseg64; m64++) {
       for (uint64 j = 0; j < 64ULL; j++) {
 	uint64 m64j = m64*64+j;
@@ -438,71 +424,206 @@ namespace EAGLE {
 	    tmpHaploBitsT[nTargetHap*Mseg64 + m64] &= ~(1ULL<<j);
 	    tmpHaploBitsT[nTargetOpp*Mseg64 + m64] &= ~(1ULL<<j);
 	  }
-	  else if (genos64j[m64j] == 1) {
-	    if (!refSeqs[m64j].empty()) {
-	      mPrevRefs = m64j;
-	      mNextRefs = m64j+1;
-	      while (mNextRefs < Mseg64*64 &&
-		     !(genos64j[mNextRefs] == 1 && !refSeqs[mNextRefs].empty()))
-		mNextRefs++;
-	    }
-	  }
 	  else if (genos64j[m64j] == 2) {
 	    tmpHaploBitsT[nTargetHap*Mseg64 + m64] |= 1ULL<<j;
 	    tmpHaploBitsT[nTargetOpp*Mseg64 + m64] |= 1ULL<<j;
 	  }
-	  else if (genos64j[m64j] == 3) { // missing
-	    if (!(mPrevRefs == -1ULL && mNextRefs == Mseg64*64)) { // ref info available
-	      double prevHapDosage64j = 0, prevOppDosage64j = 0;
-	      if (mPrevRefs != -1ULL) {
-		double sumHap = 0, sumOpp = 0;
-		for (uint k = 0; k < refSeqs[mPrevRefs].size(); k++) {
-		  sumHap += (haploBitsT[refSeqs[mPrevRefs][k].first*Mseg64+m64]>>j)&1;
-		  sumOpp += (haploBitsT[refSeqs[mPrevRefs][k].second*Mseg64+m64]>>j)&1;
-		}
-		prevHapDosage64j = sumHap / refSeqs[mPrevRefs].size();
-		prevOppDosage64j = sumOpp / refSeqs[mPrevRefs].size();
-		if (tmpHaploBitsT[nTargetHap*Mseg64 + mPrevRefs/64] & (1ULL<<(mPrevRefs&63)))
-		  std::swap(prevHapDosage64j, prevOppDosage64j);
+	}
+      }
+    }
+
+    // impute missing genos
+    if (impMissing) {
+      for (int t = 0; t <= (int) splits64j.size(); t++) {
+	if (!tHasMissing[t]) continue;
+
+	if (!runReverse) {
+	  // no reverse samples available; just use fwd samples and don't bother with ends
+	  for (int s = 0; s < samples; s++)
+	    for (int h = 0; h < 2; h++)
+	      refSamples[0][t][s].haps[h].isEnd = false;
+	  refSamples[1][t] = refSamples[0][t];
+	}
+	
+	// identify missing sites
+	uint64 m64jPrev = t==0 ? -1ULL : splits64j[t-1];
+	uint64 m64jNext = t==(int) splits64j.size() ? Mseg64*64 : splits64j[t];
+	vector <uint64> miss64j;
+	for (uint64 m64j = m64jPrev+1; m64j < m64jNext; m64j++)
+	  if (genos64j[m64j] == 3) // missing
+	    miss64j.push_back(m64j);
+
+	// orient each hap pair wrt called phase
+	for (int fb = 0; fb < 2; fb++) {
+	  for (int s = 0; s < samples; s++) {
+	    double cMmid;
+	    if (t==0) cMmid = cMs64j[splits64j[t]];
+	    else if (t==(int) splits64j.size()) cMmid = cMs64j[splits64j[t-1]];
+	    else cMmid = (cMs64j[splits64j[t-1]] + cMs64j[splits64j[t]]) / 2;
+
+	    vector < pair <double, int> > cMdistSigns;
+	    for (int i = 15; i >= 0; i--)
+	      if ((((refSamples[fb][t][s].haps[0].tMaskRev ^
+		     refSamples[fb][t][s].haps[1].tMaskRev)>>i)&1)
+		  && splitGenos[t-i]==1) {
+		uint64 m64j = splits64j[t-i-1];
+		cMdistSigns.push_back(make_pair(fabs(cMs64j[m64j]-cMmid), ((refSamples[fb][t][s].haps[0].tMaskRev>>i)&1) == ((pbwtBitsFine[m64j/64]>>(m64j&63))&1)));
 	      }
-	      double nextHapDosage64j = 0, nextOppDosage64j = 0;
-	      if (mNextRefs != Mseg64*64) {
-		double sumHap = 0, sumOpp = 0;
-		for (uint k = 0; k < refSeqs[mNextRefs].size(); k++) {
-		  sumHap += (haploBitsT[refSeqs[mNextRefs][k].first*Mseg64+m64]>>j)&1;
-		  sumOpp += (haploBitsT[refSeqs[mNextRefs][k].second*Mseg64+m64]>>j)&1;
-		}
-		nextHapDosage64j = sumHap / refSeqs[mNextRefs].size();
-		nextOppDosage64j = sumOpp / refSeqs[mNextRefs].size();
-		if (tmpHaploBitsT[nTargetHap*Mseg64 + mNextRefs/64] & (1ULL<<(mNextRefs&63)))
-		  std::swap(nextHapDosage64j, nextOppDosage64j);
+	    for (int i = 0; i < 16; i++)
+	      if ((((refSamples[fb][t][s].haps[0].tMaskFwd ^
+		     refSamples[fb][t][s].haps[1].tMaskFwd)>>i)&1)
+		  && splitGenos[t+i+1]==1) {
+		uint64 m64j = splits64j[t+i];
+		cMdistSigns.push_back(make_pair(fabs(cMs64j[m64j]-cMmid), ((refSamples[fb][t][s].haps[0].tMaskFwd>>i)&1) == ((pbwtBitsFine[m64j/64]>>(m64j&63))&1)));
 	      }
-	      double frac;
-	      if (mPrevRefs == -1ULL) frac = 0;
-	      else if (mNextRefs == Mseg64*64) frac = 1;
-	      else {
-		double x1 = cMs64j[mPrevRefs];
-		double x2 = cMs64j[mNextRefs];
-		double x = cMs64j[m64j];
-		if (x1 == x2 || !(x1 <= x && x <= x2)) frac = 0.5;
-		else frac = (x2-x) / (x2-x1);
-		//cout << "x1=" << x1 << " x=" << x << " x2=" << x2 << " frac=" << frac;
-	      }
-	      double hapDosage64j = frac * prevHapDosage64j + (1-frac) * nextHapDosage64j;
-	      double oppDosage64j = frac * prevOppDosage64j + (1-frac) * nextOppDosage64j;
-	      //cout << " hapDosage=" << hapDosage64j << " oppDosage=" << oppDosage64j << endl;
-	      if (hapDosage64j < 0.5)
-		tmpHaploBitsT[nTargetHap*Mseg64 + m64] &= ~(1ULL<<j);
-	      else
-		tmpHaploBitsT[nTargetHap*Mseg64 + m64] |= 1ULL<<j;
-	      if (oppDosage64j < 0.5)
-		tmpHaploBitsT[nTargetOpp*Mseg64 + m64] &= ~(1ULL<<j);
-	      else
-		tmpHaploBitsT[nTargetOpp*Mseg64 + m64] |= 1ULL<<j;
+	    if (!cMdistSigns.empty()) {
+	      sort(cMdistSigns.begin(), cMdistSigns.end());
+	      if (!cMdistSigns[0].second)
+		std::swap(refSamples[fb][t][s].haps[0], refSamples[fb][t][s].haps[1]);
 	    }
 	  }
 	}
+
+	// for each haplotype in turn, call missing sites 
+	for (int h = 0; h < 2; h++) {
+	  vector <int> endRefs[2];
+	  vector <int> nonEndRefs[2], nonEndLens[2];
+	  // split sampled haplotypes into buckets: those that end in (t,t+1) and those that don't
+	  for (int fb = 0; fb < 2; fb++)
+	    for (int s = 0; s < samples; s++) {
+	      if (refSamples[fb][t][s].haps[h].isEnd)
+		endRefs[fb].push_back(refSamples[fb][t][s].haps[h].refSeq);
+	      else {
+		nonEndRefs[fb].push_back(refSamples[fb][t][s].haps[h].refSeq);
+		nonEndLens[fb].push_back(refSamples[fb][t][s].haps[h].tLength);
+	      }
+	    }
+
+	  // initialize allele dosages
+	  int nMiss = miss64j.size();
+	  double alleleDoses[nMiss][2];
+	  for (int m = 0; m < nMiss; m++) alleleDoses[m][0] = alleleDoses[m][1] = 0;
+
+	  // process non-ends: call using longer of fwd, rev ref samples
+	  double meanLens[2] = {0, 0};
+	  for (int fb = 0; fb < 2; fb++)
+	    if (!nonEndLens[fb].empty())
+	      meanLens[fb] = std::accumulate(nonEndLens[fb].begin(), nonEndLens[fb].end(), 0) /
+		(double) nonEndLens[fb].size();
+	  int fbLong = meanLens[0] > meanLens[1] ? 0 : 1;
+	  for (uint k = 0; k < nonEndRefs[fbLong].size(); k++) {
+	    int refSeq = nonEndRefs[fbLong][k];
+	    for (int m = 0; m < nMiss; m++)
+	      alleleDoses[m][(haploBitsT[refSeq*Mseg64+miss64j[m]/64]>>(miss64j[m]&63))&1] += 1;
+	  }
+
+	  // process ends: find most likely recombination points at which fwd and rev haps meet
+	  if (!endRefs[0].empty() && !endRefs[1].empty()) {
+	    for (uint k = 0; k < endRefs[0].size() && k < endRefs[1].size(); k++) {
+	      int refSeqFwd = endRefs[0][k], refSeqRev = endRefs[1][k];
+	      int errFwd = 0, errRev = 0;
+	      for (uint64 m64j = m64jPrev+1; m64j < m64jNext; m64j++) {
+		if ((genos64j[m64j] == 0 || genos64j[m64j] == 2) &&
+		    (((haploBitsT[refSeqRev*Mseg64+m64j/64]>>(m64j&63))&1) != genos64j[m64j]/2))
+		  errRev++;
+	      }
+	      
+	      // find recombination points that minimize errors (usually 0 errors)
+	      int minErr = 1000;
+	      vector <double> cMdiffs; vector <uint64> revStarts;
+
+	      for (uint64 m64j = m64jPrev; m64j < m64jNext; m64j++) {
+		if (m64j != m64jPrev) { // update err counts
+		  if ((genos64j[m64j] == 0 || genos64j[m64j] == 2) &&
+		      (((haploBitsT[refSeqFwd*Mseg64+m64j/64]>>(m64j&63))&1) != genos64j[m64j]/2))
+		    errFwd++;
+		  if ((genos64j[m64j] == 0 || genos64j[m64j] == 2) &&
+		      (((haploBitsT[refSeqRev*Mseg64+m64j/64]>>(m64j&63))&1) != genos64j[m64j]/2))
+		    errRev--;
+		}
+		
+		// rev starts at m64j+1
+		double cMdiff = cMs64j[m64j+1] - (m64j==-1ULL ? 0 : cMs64j[m64j]) + 1e-9;
+
+		if (errFwd+errRev < minErr) {
+		  minErr = errFwd+errRev;
+		  cMdiffs.clear();
+		  revStarts.clear();
+		}
+		if (errFwd+errRev == minErr) {
+		  cMdiffs.push_back(cMdiff);
+		  revStarts.push_back(m64j+1);
+		}
+	      }
+	      /*
+	      if (minErr) {
+		cout << "minErr: " << minErr;
+		for (uint x = 0; x < cMdiffs.size(); x++)
+		  printf("  %.3f @ %d", cMdiffs[x], (int) revStarts[x]);
+		cout << endl;
+	      }
+	      */
+	      // augment dosages proportionally to cMdiffs (btwn consecutive SNPs) at recomb points
+	      double cMtot = std::accumulate(cMdiffs.begin(), cMdiffs.end(), 0.0);
+	      for (int m = 0; m < nMiss; m++) {
+		double cMcum = 0;
+		for (uint x = 0; x < revStarts.size(); x++) {
+		  if (miss64j[m] < revStarts[x])
+		    cMcum += cMdiffs[x];
+		  else
+		    break;
+		}
+		alleleDoses[m][(haploBitsT[refSeqFwd*Mseg64+miss64j[m]/64]>>(miss64j[m]&63))&1] +=
+		  cMcum / cMtot;
+		alleleDoses[m][(haploBitsT[refSeqRev*Mseg64+miss64j[m]/64]>>(miss64j[m]&63))&1] +=
+		  1 - cMcum / cMtot;
+	      }
+	    }
+	  }
+
+	  // make final calls
+	  for (int m = 0; m < nMiss; m++) {
+	    uint64 m64 = miss64j[m]/64, j = miss64j[m]&63;
+	    if (alleleDoses[m][0] > alleleDoses[m][1])
+	      tmpHaploBitsT[(nTargetHap+h)*Mseg64 + m64] &= ~(1ULL<<j);
+	    else
+	      tmpHaploBitsT[(nTargetHap+h)*Mseg64 + m64] |= 1ULL<<j;
+	  }
+	}
       }
+      /*
+      for (int t = 0; t < 500; t += 100) {
+	cout << "==== t: " << t << " ====" << endl;
+	for (int fb = 0; fb < 2; fb++) {
+	  cout << "--- fb: " << fb << " ---" << endl;
+	  for (int s = 0; s < 3; s++) {
+	    cout << ".. sample: " << s << " ..     " << refSamples[fb][t][s].haps[0].tLength << "," << refSamples[fb][t][s].haps[1].tLength << endl;
+	    for (int h = 0; h < 2; h++) {
+	      for (int i = 15; i >= 0; i--) {
+		if ((((refSamples[fb][t][s].haps[h].tMaskRev ^ refSamples[fb][t][s].haps[1-h].tMaskRev)>>i)&1) && splitGenos[t-i]==1) {
+		  uint64 m64j = splits64j[t-i-1];
+		  cout << (((refSamples[fb][t][s].haps[h].tMaskRev>>i)&1) == ((pbwtBitsFine[m64j/64]>>(m64j&63))&1) ? "+" : "-");
+		}
+		else
+		  cout << ".";
+	      }
+	      cout << "|";
+	      for (int i = 0; i < 16; i++) {
+		if ((((refSamples[fb][t][s].haps[h].tMaskFwd ^ refSamples[fb][t][s].haps[1-h].tMaskFwd)>>i)&1) && splitGenos[t+i+1]==1) {
+		  uint64 m64j = splits64j[t+i];
+		  cout << (((refSamples[fb][t][s].haps[h].tMaskFwd>>i)&1) == ((pbwtBitsFine[m64j/64]>>(m64j&63))&1) ? "+" : "-");
+
+		}
+		else
+		  cout << ".";
+	      }
+	      cout << "   ";
+	    }
+	    cout << endl;
+	  }
+	}
+      }
+      */
     }
     return conf;
   }
