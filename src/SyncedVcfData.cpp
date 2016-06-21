@@ -56,6 +56,7 @@ namespace EAGLE {
 	for (int j=0; j<ploidy; j++)
 	  {
 	    if ( ptr[j]==bcf_int32_vector_end ) { // this sample is haploid if ploidy==2
+	      if ( missing ) continue;  // missing diploid genotype can be written in VCF as "."
 	      cerr << "ERROR: ref genotypes contain haploid sample" << endl;
 	      exit(1);
 	    }
@@ -103,6 +104,7 @@ namespace EAGLE {
 	for (int j=0; j<ploidy; j++)
 	  {
 	    if ( ptr[j]==bcf_int32_vector_end ) { // this sample is haploid if ploidy==2
+	      if ( missing ) continue;  // missing diploid genotype can be written in VCF as "."
 	      cerr << "ERROR: target genotypes contain haploid sample" << endl;
 	      exit(1);
 	    }
