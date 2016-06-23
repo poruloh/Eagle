@@ -111,6 +111,10 @@ namespace EAGLE {
     po::options_description hidden("Hidden options");
     hidden.add_options()
       ("help,h", "print help message with typical options")
+      
+      // experimental options
+      ("usePS", po::value<int>(&usePS)->default_value(0),
+       "use FORMAT:PS phase constraints in target VCF: 1=soft, 2=harder")
 
       // Eagle1 advanced options
       ("v1fast", "Eagle1 fast mode: --maxBlockLen=0.3, --maxStatePairsStep4=100, --fracStep4=0.5")

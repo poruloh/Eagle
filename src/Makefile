@@ -30,7 +30,6 @@ ifeq (${prof},true)
 	CFLAGS += -g -pg
 	LFLAGS += -pg
 endif
-CFLAGS += -DUSE_PBWT
 
 CFLAGS += -std=c++0x -msse -msse2 -fopenmp -Wall
 LFLAGS += -fopenmp

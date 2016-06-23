@@ -44,6 +44,7 @@ namespace EAGLE {
     std::string vcfOutFormat, vcfOutSuffix, vcfWriteMode;
     // outFormat b|u|z|v -> outSuffix bcf|bcf|vcf.gz|vcf, writeMode wb|wbu|wz|w
     bool noImpMissing;
+    int usePS; // use FORMAT:PS phase constraints: 1=soft, 2=harder
 
     bool allowRefAltSwap; // in reference-based phasing mode
     bool usePBWT;

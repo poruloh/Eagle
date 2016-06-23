@@ -19,6 +19,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <map>
 #include <algorithm>
 #include <cstring>
 
@@ -132,7 +133,7 @@ namespace EAGLE {
   vector < pair <int, int> > SyncedVcfData::processVcfs
   (const string &vcfRef, const string &vcfTarget, bool allowRefAltSwap, int chrom, double bpStart,
    double bpEnd, vector <bool> &hapsRef, vector <uchar> &genosTarget, const string &tmpFile,
-   const string &writeMode) {
+   const string &writeMode, int usePS, vector < vector < pair <int, int> > > &conPSall) {
 
     vector < pair <int, int> > chrBps;
 
@@ -188,6 +189,8 @@ namespace EAGLE {
 
     Nref = bcf_hdr_nsamples(ref_hdr);
     Ntarget = bcf_hdr_nsamples(tgt_hdr);
+    conPSall.resize(Ntarget);
+    std::map <int, int> bpToSyncedIndex1; // bp -> 1-based index (m+1)
 
     // Read target sample IDs
     targetIDs.resize(Ntarget);
@@ -207,6 +210,7 @@ namespace EAGLE {
 
     int mref_gt = 0, *ref_gt = NULL;
     int mtgt_gt = 0, *tgt_gt = NULL;
+    int mtgt_ps = 0, *tgt_ps = NULL; int Mps = 0; uint64 err_ps = 0, good_ps = 0;
     int prev_rid = -1; // chromosome BCF id and human-readable numeric id
     while ( bcf_sr_next_line(sr) )
       {
@@ -282,6 +286,7 @@ namespace EAGLE {
     if ( prev_rid!=tgt->rid ) break;
 
 	M++; // SNP passes checks
+        bpToSyncedIndex1[tgt->pos+1] = M; // TODO: be careful about duplicate bp (multiallelics?)
 
 	// append chromosome number and base pair coordinate to chrBps
 	chrBps.push_back(make_pair(chrom, tgt->pos+1));
@@ -301,6 +306,23 @@ namespace EAGLE {
 	process_target_genotypes(Ntarget, ntgt_gt, tgt_gt, genosTarget, numMissing);
 	GmissingTarget += numMissing;
 
+	// process target PS field
+	if (usePS && bcf_get_format_int32(tgt_hdr, tgt, "PS", &tgt_ps, &mtgt_ps) >= 0) {
+	  Mps++;
+	  for (uint i = 0; i < Ntarget; i++)
+	    if (tgt_ps[i] != bcf_int32_missing) {
+	      std::map <int, int>::iterator it = bpToSyncedIndex1.find(abs(tgt_ps[i]));
+	      if (it == bpToSyncedIndex1.end() ||
+		  genosTarget[(M-1)*Ntarget + i] != 1 ||
+		  genosTarget[(it->second-1)*Ntarget + i] != 1)
+		err_ps++;
+	      else {
+		conPSall[i].push_back(make_pair((int) M, it->second * (tgt_ps[i]>0 ? 1 : -1)));
+		good_ps++;
+	      }
+	    }
+	}
+
 	// print the record
 	bcf_write(out, tgt_hdr, tgt);
       }
@@ -311,6 +333,11 @@ namespace EAGLE {
     free(tgt_gt);
 
     cout << "SNPs to analyze: M = " << M << " SNPs in both target and reference" << endl;
+    if (Mps) {
+      cout << "                     " << Mps << " SNPs with FORMAT:PS field" << endl;
+      cout << good_ps << " usable FORMAT:PS constraints" << endl;
+      cout << err_ps << " unusable FORMAT:PS constraints" << endl;
+    }
     if (numRefAltSwaps)
       cerr << "--> WARNING: REF/ALT were swapped in " << numRefAltSwaps << " of these SNPs <--"
 	   << endl;
@@ -420,14 +447,15 @@ namespace EAGLE {
   SyncedVcfData::SyncedVcfData(const string &vcfRef, const string &vcfTarget, bool allowRefAltSwap,
 			       int chrom, double bpStart, double bpEnd,
 			       const string &geneticMapFile, double cMmax, const string &tmpFile,
-			       const string &writeMode) {
+			       const string &writeMode, int usePS,
+			       vector < vector < pair <int, int> > > &conPSall) {
 
     // perform synced read
     vector <bool> hapsRef;     // M*2*Nref
     vector <uchar> genosTarget; // M*Ntarget
     vector < pair <int, int> > chrBps = 
       processVcfs(vcfRef, vcfTarget, allowRefAltSwap, chrom, bpStart, bpEnd, hapsRef, genosTarget,
-		  tmpFile, writeMode);
+		  tmpFile, writeMode, usePS, conPSall);
 
     // interpolate genetic coordinates
     vector <double> cMs = processMap(chrBps, geneticMapFile);

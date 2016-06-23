@@ -86,8 +86,17 @@ namespace EAGLE {
 
   float Eagle::runPBWT(uint64 n0, uint64 nF1, uint64 nF2, int Kpbwt, bool runReverse,
 		       bool useTargetHaps, bool impMissing) {
+    vector < pair <int, int> > noConPS;
+    return runPBWT(n0, nF1, nF2, Kpbwt, runReverse, useTargetHaps, impMissing, 0, noConPS);
+  }
+
+  float Eagle::runPBWT(uint64 n0, uint64 nF1, uint64 nF2, int Kpbwt, bool runReverse,
+		       bool useTargetHaps, bool impMissing, int usePS,
+		       const vector < pair <int, int> > &conPS) {
+    vector <uint> m64jInds(Mseg64*64+1);
 
     const int SPEED_FACTOR = 1; const float lnPerr = logf(powf(10.0f, logPerr));
+    const int LENGTH_FACTOR = 1;
 
     bool print = (int) nF1 != -1;
     
@@ -195,14 +204,36 @@ namespace EAGLE {
     // initialize DipTree object
     if (print) cout << "making DipTree (unconstr)...   " << std::flush;
     vector <char> constraints(splitGenos.size(), NO_CONSTRAINT);
-    const int histLengthFast = 30, pbwtBeamWidthFast = 30/SPEED_FACTOR;
+    vector <int> splitInds(Mseg64*64+1); // index map for FORMAT:PS constraints
+    if (usePS) {
+      // populate splitInds: 1-based indices t=1..T-1 in splits64j[t-1] of 1-based SNPs m+1
+      for (uint64 m64j = 0, m = 0, t = 0; m64j < Mseg64*64; m64j++)
+	if (maskSnps64j[m64j]) {
+	  m++;
+	  m64jInds[m] = m64j;
+	  if (t < splits64j.size() && splits64j[t]==m64j) {
+	    t++;
+	    splitInds[m] = t;
+	  }
+	  else
+	    splitInds[m] = 0;
+	}
+
+      // set constraints for fast search
+      for (uint c = 0; c < conPS.size(); c++)
+	if (splitInds[conPS[c].first] && splitInds[abs(conPS[c].second)])
+	  constraints[splitInds[conPS[c].first]] =
+	    ((splitInds[conPS[c].first]-splitInds[abs(conPS[c].second)])<<1)|(conPS[c].second<0);
+    }
+
+    const int histLengthFast = 30*LENGTH_FACTOR, pbwtBeamWidthFast = 30/SPEED_FACTOR;
     DipTree dipTreeFast(*hapHedgePtr, splitGenos, &constraints[0], cMcoords, histLengthFast,
 			pbwtBeamWidthFast, lnPerr, 0);
     if (print) cout << " done " << timer.update_time() << endl;
 
     // explore search space; make phase calls
     if (print) cout << "making phase calls (uncon)...  " << std::flush;
-    const int callLengthFast = 10;
+    const int callLengthFast = 10*LENGTH_FACTOR;
     const float minFix = 0.5f, maxFix = 0.9f, fixThresh = 0.01f;
     vector <ProbInd> probInds;
     vector <uint64> pbwtBitsFast(Mseg64);
@@ -256,19 +287,27 @@ namespace EAGLE {
     if (print) cout << " done " << timer.update_time() << endl;
     //cout << "frac fixed: " << fracFixed << endl;
 
+    // set constraints for fine search
+    if (usePS == 2) {
+      for (uint c = 0; c < conPS.size(); c++)
+	if (splitInds[conPS[c].first] && splitInds[abs(conPS[c].second)])
+	  constraints[splitInds[conPS[c].first]] =
+	    revConstraints[T-1-splitInds[abs(conPS[c].second)]] =
+	    ((splitInds[conPS[c].first]-splitInds[abs(conPS[c].second)])<<1)|(conPS[c].second<0);
+    }
 
     /***** RUN FINE (CONSTRAINED) DIPTREE SEARCH *****/
 
     // initialize DipTree object
     if (print) cout << "making DipTree (constrained)..." << std::flush;
-    const int histLengthFine = 100, pbwtBeamWidthFine = 50/SPEED_FACTOR;
+    const int histLengthFine = 100*LENGTH_FACTOR, pbwtBeamWidthFine = 50/SPEED_FACTOR;
     DipTree dipTreeFine(*hapHedgePtr, splitGenos, &constraints[0], cMcoords, histLengthFine,
 			pbwtBeamWidthFine, lnPerr, 0);
     if (print) cout << " done " << timer.update_time() << endl;
 
     // explore search space; make phase calls
     if (print) cout << "making phase calls (constr)... " << std::flush;
-    const int callLengthFine = 20;
+    const int callLengthFine = 20*LENGTH_FACTOR;
     const int callLengthSample = 20;
 
     // sample refs (BEFORE callProbAA: sampleRefs needs recent history that gets overwritten)
@@ -625,6 +664,19 @@ namespace EAGLE {
       }
       */
     }
+
+    if (print && usePS) {
+      int correct = 0;
+      for (uint c = 0; c < conPS.size(); c++) {
+	int m1 = conPS[c].first, m2 = abs(conPS[c].second), isOpp = conPS[c].second<0;
+	uint m64j1 = m64jInds[m1], m64j2 = m64jInds[m2];
+	assert(genos64j[m64j1]==1 && genos64j[m64j2]==1);
+	correct += (uint) isOpp == (((pbwtBitsFine[m64j1/64]>>(m64j1&63))&1) ^
+				    ((pbwtBitsFine[m64j2/64]>>(m64j2&63))&1));
+      }
+      cout << "constraints respected: " << correct << " / " << conPS.size() << endl;
+    }
+
     return conf;
   }
 

@@ -40,17 +40,17 @@ using namespace EAGLE;
 using namespace std;
 
 #define LOCAL_TEST
-// TODO
 //#define OLD_IMP_MISSING
 
 void phaseWithRef(const EagleParams &params, Timer &timer, double t0, int argc, char **argv) {
 
   string tmpFile = params.outPrefix + ".unphased." + params.vcfOutSuffix;
   string outFile = params.outPrefix + "." + params.vcfOutSuffix;
+  vector < vector < pair <int, int> > > conPSall;
   SyncedVcfData vcfData(params.vcfRef, params.vcfTarget, params.allowRefAltSwap, params.chrom,
 			params.bpStart-params.bpFlanking, params.bpEnd+params.bpFlanking,
 			params.geneticMapFile, params.cMmax==0 ? 1 : params.cMmax,
-			tmpFile, params.vcfWriteMode);
+			tmpFile, params.vcfWriteMode, params.usePS, conPSall);
 
   Eagle eagle(vcfData.getNref(), vcfData.getNtarget(), vcfData.getMseg64(),
 	      vcfData.getGenoBits(), vcfData.getSeg64cMvecs(), params.pErr);
@@ -111,7 +111,8 @@ void phaseWithRef(const EagleParams &params, Timer &timer, double t0, int argc, 
 	  }
 	}
 	confs[i-Nref] = eagle.runPBWT(i, nF1, nF2, params.Kpbwt/(iter<iters?2:1), iter==iters,
-				      iter>1, !params.noImpMissing);
+				      iter>1, !params.noImpMissing, params.usePS,
+				      conPSall[i-Nref]);
 #ifdef OLD_IMP_MISSING
 	if (!params.noImpMissing) {
 	  Timer tim;
@@ -482,6 +483,7 @@ int main(int argc, char *argv[]) {
     HapHedge hapHedgeBwd(hapBitsBwdT, skip);
     cout << "Time for HapHedge: " << timer.update_time() << endl;
     */
+#define USE_PBWT
 #ifndef USE_PBWT
     cout << "Building hash tables" << endl;
     eagle.buildHashTables(params.iter, 1, params.seed);
