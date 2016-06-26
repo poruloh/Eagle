@@ -84,19 +84,20 @@ namespace EAGLE {
     return bestHaps;
   }
 
-  float Eagle::runPBWT(uint64 n0, uint64 nF1, uint64 nF2, int Kpbwt, bool runReverse,
-		       bool useTargetHaps, bool impMissing) {
+  float Eagle::runPBWT(uint64 n0, uint64 nF1, uint64 nF2, int Kpbwt, float cMexpect,
+		       bool runReverse, bool useTargetHaps, bool impMissing) {
     vector < pair <int, int> > noConPS;
-    return runPBWT(n0, nF1, nF2, Kpbwt, runReverse, useTargetHaps, impMissing, 0, noConPS);
+    return runPBWT(n0, nF1, nF2, Kpbwt, cMexpect, runReverse, useTargetHaps, impMissing, 0,
+		   noConPS);
   }
 
-  float Eagle::runPBWT(uint64 n0, uint64 nF1, uint64 nF2, int Kpbwt, bool runReverse,
-		       bool useTargetHaps, bool impMissing, int usePS,
+  float Eagle::runPBWT(uint64 n0, uint64 nF1, uint64 nF2, int Kpbwt, float cMexpect,
+		       bool runReverse, bool useTargetHaps, bool impMissing, int usePS,
 		       const vector < pair <int, int> > &conPS) {
     vector <uint> m64jInds(Mseg64*64+1);
 
     const int SPEED_FACTOR = 1; const float lnPerr = logf(powf(10.0f, logPerr));
-    const int LENGTH_FACTOR = 1;
+    const int HIST_LENGTH_FACTOR = 1, CALL_LENGTH_FACTOR = 1;
 
     bool print = (int) nF1 != -1;
     
@@ -226,14 +227,14 @@ namespace EAGLE {
 	    ((splitInds[conPS[c].first]-splitInds[abs(conPS[c].second)])<<1)|(conPS[c].second<0);
     }
 
-    const int histLengthFast = 30*LENGTH_FACTOR, pbwtBeamWidthFast = 30/SPEED_FACTOR;
-    DipTree dipTreeFast(*hapHedgePtr, splitGenos, &constraints[0], cMcoords, histLengthFast,
-			pbwtBeamWidthFast, lnPerr, 0);
+    const int histLengthFast = 30*HIST_LENGTH_FACTOR, pbwtBeamWidthFast = 30/SPEED_FACTOR;
+    DipTree dipTreeFast(*hapHedgePtr, splitGenos, &constraints[0], cMcoords, cMexpect,
+			histLengthFast, pbwtBeamWidthFast, lnPerr, 0);
     if (print) cout << " done " << timer.update_time() << endl;
 
     // explore search space; make phase calls
     if (print) cout << "making phase calls (uncon)...  " << std::flush;
-    const int callLengthFast = 10*LENGTH_FACTOR;
+    const int callLengthFast = 10*CALL_LENGTH_FACTOR;
     const float minFix = 0.5f, maxFix = 0.9f, fixThresh = 0.01f;
     vector <ProbInd> probInds;
     vector <uint64> pbwtBitsFast(Mseg64);
@@ -300,14 +301,14 @@ namespace EAGLE {
 
     // initialize DipTree object
     if (print) cout << "making DipTree (constrained)..." << std::flush;
-    const int histLengthFine = 100*LENGTH_FACTOR, pbwtBeamWidthFine = 50/SPEED_FACTOR;
-    DipTree dipTreeFine(*hapHedgePtr, splitGenos, &constraints[0], cMcoords, histLengthFine,
-			pbwtBeamWidthFine, lnPerr, 0);
+    const int histLengthFine = 100*HIST_LENGTH_FACTOR, pbwtBeamWidthFine = 50/SPEED_FACTOR;
+    DipTree dipTreeFine(*hapHedgePtr, splitGenos, &constraints[0], cMcoords, cMexpect,
+			histLengthFine, pbwtBeamWidthFine, lnPerr, 0);
     if (print) cout << " done " << timer.update_time() << endl;
 
     // explore search space; make phase calls
     if (print) cout << "making phase calls (constr)... " << std::flush;
-    const int callLengthFine = 20*LENGTH_FACTOR;
+    const int callLengthFine = 20*CALL_LENGTH_FACTOR;
     const int callLengthSample = 20;
 
     // sample refs (BEFORE callProbAA: sampleRefs needs recent history that gets overwritten)
@@ -352,7 +353,7 @@ namespace EAGLE {
 
       // initialize DipTree object
       if (print) cout << "making revDipTree (constr)...  " << std::flush;
-      DipTree revDipTreeFine(revHapHedge, revSplitGenos, &revConstraints[0], revcMcoords,
+      DipTree revDipTreeFine(revHapHedge, revSplitGenos, &revConstraints[0], revcMcoords, cMexpect,
 			     histLengthFine, pbwtBeamWidthFine, lnPerr, 0);
       if (print) cout << " done " << timer.update_time() << endl;
 

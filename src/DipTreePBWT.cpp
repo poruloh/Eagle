@@ -72,9 +72,9 @@ namespace EAGLE {
   // class HapWaves
 
   HapWaves::HapWaves(const HapHedgeErr &_hapHedge, const vector <float> &_cMcoords,
-		     int _histLength, int _beamWidth, float _logPerr, int _tCur) :
+		     float _cMexpect, int _histLength, int _beamWidth, float _logPerr, int _tCur) :
     rng(123), rand01(rng, boost::uniform_01<>()),
-    hapHedge(_hapHedge), cMcoords(_cMcoords), histLength(_histLength),
+    hapHedge(_hapHedge), cMcoords(_cMcoords), cMexpect(_cMexpect), histLength(_histLength),
     beamWidth(_beamWidth), pErr(expf(_logPerr)), maxHapPaths(2*beamWidth),
     maxHapPrefixes(maxHapPaths*histLength*2+1), tCur(_tCur) {
 
@@ -109,14 +109,27 @@ namespace EAGLE {
     }
   }
 
-  float recombP(int tCur, int tSplit, const vector <float> &cMcoords) {
-    if (tCur+1 == (int) cMcoords.size()) return 1.0f;
-    else {
-      const float cMpseudo = 2.0f, minRecombP = 0.000001f, maxRecombP = 1.0f;//pErr;
-      return std::max(std::min(3 * (cMcoords[tCur+1]-cMcoords[tCur])
-			       / (cMpseudo + 2*(cMcoords[tCur+1]-cMcoords[tSplit])),
-			       maxRecombP), minRecombP);
+  inline float sqf(float x) { return x*x; }
+
+  // use cMcoords and cMexpect (cMexpect>0 => coalescent; cMexpect<0 => Li-Stephens)
+  float HapWaves::recombP(int tCur, int tSplit) const {
+    float p = 0;
+    if (cMexpect > 0) { // coalescent IBD length distribution with mean a = cMexpect
+      float a = cMexpect;
+      float term1 = 1 / sqf(1 + (cMcoords[tCur]-cMcoords[tSplit])/a);
+      float term2 = tCur+1 == (int) cMcoords.size() ? 0 :
+	1 / sqf(1 + (cMcoords[tCur+1]-cMcoords[tSplit])/a);
+      p = term1 - term2;
     }
+    else { // Li-Stephens IBD length distribution with mean a = -cMexpect
+      float a = -cMexpect;
+      float term1 = expf(-(cMcoords[tCur]-cMcoords[tSplit])/a);
+      float term2 = tCur+1 == (int) cMcoords.size() ? 0 :
+	expf(-(cMcoords[tCur+1]-cMcoords[tSplit])/a);
+      p = term1 - term2;
+    }
+    const float minRecombP = 0.000001f, maxRecombP = 1.0f;//pErr;
+    return std::max(std::min(p, maxRecombP), minRecombP);
   }
 
   // populate hapPrefixes[nextMod]
@@ -159,7 +172,7 @@ namespace EAGLE {
 	    }
 	  }
 	  relProbStopNext[b] += split.relProbLastStop * hapPrefix.toHetOnlyProb[b]
-	    * recombP(tCur, split.t, cMcoords);
+	    * recombP(tCur, split.t);
 	}
       }
       for (int b = 0; b < 2; b++) {
@@ -222,7 +235,7 @@ namespace EAGLE {
       const HapPathSplit &split = hapPath.splitList[j];
       const HapPrefix &hapPrefix = hapPrefixes[tMod][split.hapPrefixInd];
       relProbStopNext += split.relProbLastStop * hapPrefix.toHetOnlyProb[tBit]
-	* recombP(t, split.t, cMcoords);
+	* recombP(t, split.t);
       cumRelProbStopNext[j] = relProbStopNext;
     }
 
@@ -388,10 +401,11 @@ namespace EAGLE {
   }
 
   DipTree::DipTree(const HapHedgeErr &_hapHedge, const vector <uchar> &_genos,
-		   const char *_constraints, const vector <float> &_cMcoords,
+		   const char *_constraints, const vector <float> &_cMcoords, float _cMexpect,
 		   int _histLength, int _beamWidth, float _logPerr, int _tCur) :
     rng(12345), rand01(rng, boost::uniform_01<>()),
-    hapHedge(_hapHedge), hapWaves(_hapHedge, _cMcoords, _histLength, _beamWidth, _logPerr, _tCur),
+    hapHedge(_hapHedge),
+    hapWaves(_hapHedge, _cMcoords, _cMexpect, _histLength, _beamWidth, _logPerr, _tCur),
     genos(_genos), constraints(_constraints), histLength(_histLength), beamWidth(_beamWidth),
     logPerr(_logPerr), tCur(_tCur), T(_hapHedge.getNumTrees()), nodes(T+1), normProbs(T+1) {
 

@@ -81,6 +81,7 @@ namespace EAGLE {
 
     const HapHedgeErr &hapHedge;
     const std::vector <float> &cMcoords;
+    const float cMexpect;
     const int histLength, beamWidth;
     const float pErr;
     const int maxHapPaths, maxHapPrefixes;
@@ -92,9 +93,11 @@ namespace EAGLE {
 
   public:
     
-    HapWaves(const HapHedgeErr &_hapHedge, const std::vector <float> &_cMcoords,
+    HapWaves(const HapHedgeErr &_hapHedge, const std::vector <float> &_cMcoords, float cMexpect,
 	     int _histLength, int _beamWidth, float _logPerr, int _tCur);
     ~HapWaves(void);
+
+    float recombP(int tCur, int tSplit) const;
 
     // populate hapPrefixes[nextMod]
     // populate toCumLogP[] in hapPaths[curMod] (but don't populate hapPaths[nextMod])
@@ -149,7 +152,7 @@ namespace EAGLE {
   public:
 
     DipTree(const HapHedgeErr &_hapHedge, const std::vector <uchar> &_genos,
-	    const char *_constraints, const std::vector <float> &_cMcoords,
+	    const char *_constraints, const std::vector <float> &_cMcoords, float cMexpect,
 	    int _histLength, int _beamWidth, float _logPerr, int _tCur);
 
     // compute probability of AA at hets tCallLoc1 and tCallLoc2

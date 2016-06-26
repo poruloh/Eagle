@@ -110,9 +110,9 @@ void phaseWithRef(const EagleParams &params, Timer &timer, double t0, int argc, 
 	    nF1 = -(i-2); nF2 = i-1;
 	  }
 	}
-	confs[i-Nref] = eagle.runPBWT(i, nF1, nF2, params.Kpbwt/(iter<iters?2:1), iter==iters,
-				      iter>1, !params.noImpMissing, params.usePS,
-				      conPSall[i-Nref]);
+	confs[i-Nref] = eagle.runPBWT
+	  (i, nF1, nF2, params.Kpbwt/(iter<iters?2:1), params.expectIBDcM, iter==iters, iter>1,
+	   !params.noImpMissing, params.usePS, conPSall[i-Nref]);
 #ifdef OLD_IMP_MISSING
 	if (!params.noImpMissing) {
 	  Timer tim;
@@ -394,13 +394,14 @@ int main(int argc, char *argv[]) {
 #endif
 	  if (b == 1)
 	    for (uint att = 0; att < min(9U, (uint) children.size()); att++) // run on trios
-	      eagle.runPBWT(children[att], nF1s[att], nF2s[att], Kpbwt, runReverse, true, false);
+	      eagle.runPBWT(children[att], nF1s[att], nF2s[att], Kpbwt, params.expectIBDcM,
+			    runReverse, true, false);
 
 	  uint iStart = (b-1)*N/numBatches, iEnd = b*N/numBatches;
 	  cout << endl << "Phasing samples " << (iStart+1) << "-" << iEnd << endl;
 #pragma omp parallel for reduction(+:timeImpMissing) schedule(dynamic, 4)
 	  for (uint i = iStart; i < iEnd; i++) {	
-	    eagle.runPBWT(i, -1, -1, Kpbwt, runReverse, true, true);
+	    eagle.runPBWT(i, -1, -1, Kpbwt, params.expectIBDcM, runReverse, true, true);
 #ifdef OLD_IMP_MISSING
 	    Timer tim;
 	    eagle.imputeMissing(hapHedge, i);
@@ -508,7 +509,8 @@ int main(int argc, char *argv[]) {
 	}
       eagle.checkTrioErrorRate(i, nF1, nF2);
 #ifdef USE_PBWT
-      eagle.runPBWT(i, nF1, nF2, params.Kpbwt, true, false, !params.noImpMissing);
+      eagle.runPBWT(i, nF1, nF2, params.Kpbwt, params.expectIBDcM, true, false,
+		    !params.noImpMissing);
 #else
       timeMN2 += params.iter == 2 ? eagle.findLongHapMatches(i, nF1, nF2, params.iter)
 	: eagle.runHMM(i, nF1, nF2, params.iter,

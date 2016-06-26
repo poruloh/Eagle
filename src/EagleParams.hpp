@@ -49,6 +49,7 @@ namespace EAGLE {
     bool allowRefAltSwap; // in reference-based phasing mode
     bool usePBWT;
     int pbwtIters;
+    float expectIBDcM; // expected length of an IBD segment (for transition probabilities)
 
     // QC params
     double maxMissingPerSnp, maxMissingPerIndiv;

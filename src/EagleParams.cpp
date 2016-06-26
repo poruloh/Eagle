@@ -103,8 +103,10 @@ namespace EAGLE {
        "number of conditioning haplotypes") // TODO: throw error if set in --v1 mode
       ("pbwtIters", po::value<int>(&pbwtIters)->default_value(0),
        "number of PBWT phasing iterations (0=auto)")
+      ("expectIBDcM", po::value<float>(&expectIBDcM)->default_value(1, "1.0"),
+       "expected length of haplotype copying (cM)")
       ("genoErrProb", po::value<double>(&pErr)->default_value(0.003, "0.003"),
-       "estimated genotype error probability")      
+       "estimated genotype error probability")
       ("v1", "use Eagle1 phasing algorithm (instead of default Eagle2 algorithm)")
       ;
 
