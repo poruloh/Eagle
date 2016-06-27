@@ -92,13 +92,15 @@ OMAIN = EagleMain.o $O
 
 .PHONY: clean
 
-%.o: %.cpp
-	${CC} ${CFLAGS} ${CPATHS} -o $@ -c $<
-
-all: $T
-
 $T: ${OMAIN}
 	${CC} ${LFLAGS} -o $T ${OMAIN} $L
+
+%.o: %.cpp
+	${CC} ${CFLAGS} ${CPATHS} -o $@ -c $<
+EagleMain.o: Version.hpp
+Eagle.o: Version.hpp
+
+all: $T
 
 clean:
 	rm -f *.o

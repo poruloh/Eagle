@@ -624,7 +624,7 @@ namespace EAGLE {
     cout << "Genetic distance range:  " << 100*(snps.back().genpos - snps[0].genpos)
 	 << " cM" << endl;
     cout << "Average # SNPs per cM:   " << (int) (M/(100*(snps.back().genpos-snps[0].genpos))+0.5)
-	 << "   (recommended: 50-500 SNPs/cM)" << endl;
+	 << endl;
 
     if (cMmax == 0) {
       cMmax = std::min(1.0, std::max(N / 1e5, 0.25));

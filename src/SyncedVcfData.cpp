@@ -468,8 +468,7 @@ namespace EAGLE {
       }
     cout << "Physical distance range: " << physRange << " base pairs" << endl;
     cout << "Genetic distance range:  " << cMrange << " cM" << endl;
-    cout << "Average # SNPs per cM:   " << (int) (M/cMrange + 0.5)
-	 << "   (recommended: 50-500 SNPs/cM)" << endl;
+    cout << "Average # SNPs per cM:   " << (int) (M/cMrange + 0.5) << endl;
 
     if (physRange == 0 || cMrange == 0) {
       cerr << "ERROR: Physical and genetic distance ranges must be positive" << endl;

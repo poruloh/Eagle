@@ -39,7 +39,7 @@
 using namespace EAGLE;
 using namespace std;
 
-#define LOCAL_TEST
+//#define LOCAL_TEST
 //#define OLD_IMP_MISSING
 
 void phaseWithRef(const EagleParams &params, Timer &timer, double t0, int argc, char **argv) {

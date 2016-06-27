@@ -502,7 +502,7 @@ namespace EAGLE {
       }
 
       for (uint r = 0; r < IBDx2regions.size(); r++) // set IBDx2 region flags
-	memset(&isIBDx2[IBDx2regions[r].first], IBDx2regions[r].second-IBDx2regions[r].first, 1);
+	memset(&isIBDx2[IBDx2regions[r].first], 1, IBDx2regions[r].second-IBDx2regions[r].first);
 
       // accumulate votes
       for (uint64 m64j = start; m64j <= end; m64j++) {
@@ -525,7 +525,7 @@ namespace EAGLE {
       }
 
       for (uint r = 0; r < IBDx2regions.size(); r++) // unset IBDx2 region flags
-	memset(&isIBDx2[IBDx2regions[r].first], IBDx2regions[r].second-IBDx2regions[r].first, 0);
+	memset(&isIBDx2[IBDx2regions[r].first], 0, IBDx2regions[r].second-IBDx2regions[r].first);
     }
 
     for (uint64 m64j = 0; m64j < Mseg64*64; m64j++) {
