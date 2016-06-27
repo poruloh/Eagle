@@ -168,10 +168,10 @@ namespace EAGLE {
 								 uint64 nF2);
     double findLongHapMatches(uint64 n0, uint64 nF1, uint64 nF2, int iter);
     double runHMM(uint64 n0, uint64 nF1, uint64 nF2, int iter, uint beamWidth, uint maxHapStates);
-    float runPBWT(uint64 n0, uint64 nF1, uint64 nF2, int Kpbwt, float cMexpect, bool runReverse,
-		  bool useTargetHaps, bool impMissing);
-    float runPBWT(uint64 n0, uint64 nF1, uint64 nF2, int Kpbwt, float cMexpect, bool runReverse,
-		  bool useTargetHaps, bool impMissing, int usePS,
+    float runPBWT(uint64 n0, uint64 nF1, uint64 nF2, int Kpbwt, float cMexpect, double histFactor,
+		  bool runReverse, bool useTargetHaps, bool impMissing);
+    float runPBWT(uint64 n0, uint64 nF1, uint64 nF2, int Kpbwt, float cMexpect, double histFactor,
+		  bool runReverse, bool useTargetHaps, bool impMissing, int usePS,
 		  const std::vector < std::pair <int, int> > &conPS);
     void imputeMissing(const HapHedge &hapHedge, uint64 n0);
     void writePhaseConfs(const std::string &tmpPhaseFile) const;

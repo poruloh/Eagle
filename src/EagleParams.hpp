@@ -50,6 +50,7 @@ namespace EAGLE {
     bool usePBWT;
     int pbwtIters;
     float expectIBDcM; // expected length of an IBD segment (for transition probabilities)
+    double histFactor; // history length multiplier
 
     // QC params
     double maxMissingPerSnp, maxMissingPerIndiv;

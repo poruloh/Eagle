@@ -85,19 +85,19 @@ namespace EAGLE {
   }
 
   float Eagle::runPBWT(uint64 n0, uint64 nF1, uint64 nF2, int Kpbwt, float cMexpect,
-		       bool runReverse, bool useTargetHaps, bool impMissing) {
+		       double histFactor, bool runReverse, bool useTargetHaps, bool impMissing) {
     vector < pair <int, int> > noConPS;
-    return runPBWT(n0, nF1, nF2, Kpbwt, cMexpect, runReverse, useTargetHaps, impMissing, 0,
-		   noConPS);
+    return runPBWT(n0, nF1, nF2, Kpbwt, cMexpect, histFactor, runReverse, useTargetHaps,
+		   impMissing, 0, noConPS);
   }
 
   float Eagle::runPBWT(uint64 n0, uint64 nF1, uint64 nF2, int Kpbwt, float cMexpect,
-		       bool runReverse, bool useTargetHaps, bool impMissing, int usePS,
-		       const vector < pair <int, int> > &conPS) {
+		       double histFactor, bool runReverse, bool useTargetHaps, bool impMissing,
+		       int usePS, const vector < pair <int, int> > &conPS) {
     vector <uint> m64jInds(Mseg64*64+1);
 
     const int SPEED_FACTOR = 1; const float lnPerr = logf(powf(10.0f, logPerr));
-    const int HIST_LENGTH_FACTOR = 1, CALL_LENGTH_FACTOR = 1;
+    const int CALL_LENGTH_FACTOR = 1;
 
     bool print = (int) nF1 != -1;
     
@@ -227,7 +227,7 @@ namespace EAGLE {
 	    ((splitInds[conPS[c].first]-splitInds[abs(conPS[c].second)])<<1)|(conPS[c].second<0);
     }
 
-    const int histLengthFast = 30*HIST_LENGTH_FACTOR, pbwtBeamWidthFast = 30/SPEED_FACTOR;
+    const int histLengthFast = 30*histFactor, pbwtBeamWidthFast = 30/SPEED_FACTOR;
     DipTree dipTreeFast(*hapHedgePtr, splitGenos, &constraints[0], cMcoords, cMexpect,
 			histLengthFast, pbwtBeamWidthFast, lnPerr, 0);
     if (print) cout << " done " << timer.update_time() << endl;
@@ -301,7 +301,7 @@ namespace EAGLE {
 
     // initialize DipTree object
     if (print) cout << "making DipTree (constrained)..." << std::flush;
-    const int histLengthFine = 100*HIST_LENGTH_FACTOR, pbwtBeamWidthFine = 50/SPEED_FACTOR;
+    const int histLengthFine = 100*histFactor, pbwtBeamWidthFine = 50/SPEED_FACTOR;
     DipTree dipTreeFine(*hapHedgePtr, splitGenos, &constraints[0], cMcoords, cMexpect,
 			histLengthFine, pbwtBeamWidthFine, lnPerr, 0);
     if (print) cout << " done " << timer.update_time() << endl;
