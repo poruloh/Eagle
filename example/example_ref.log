@@ -1,7 +1,7 @@
                       +-----------------------------+
                       |                             |
-                      |   Eagle v2.0.1              |
-                      |   May 9, 2016               |
+                      |   Eagle v2.1                |
+                      |   July 6, 2016              |
                       |   Po-Ru Loh                 |
                       |                             |
                       +-----------------------------+
@@ -40,7 +40,7 @@ Filling in genetic map coordinates using reference file:
   ../tables/genetic_map_hg19_example.txt.gz
 Physical distance range: 3595565 base pairs
 Genetic distance range:  10.292 cM
-Average # SNPs per cM:   42   (recommended: 50-500 SNPs/cM)
+Average # SNPs per cM:   42
 Number of <=(64-SNP, 1cM) segments: 9
 Average # SNPs per segment: 47
 
@@ -51,29 +51,26 @@ BEGINNING PHASING
 
 PHASING ITER 1 OF 1
 
-Making HapHedge
-Built PBWT on 338 haplotypes
-Time for HapHedge: 0.00191903
 
 Phasing target samples
-................................................................................Time for phasing iter 1: 0.187661
-Time for phasing iter 1 impMissing: 0.00736785
+................................................................................
+Time for phasing iter 1: 0.27639
 Writing vcf.gz output to target.phased.vcf.gz
 [W::vcf_parse] INFO 'AC' is not defined in the header, assuming Type=String
 [W::vcf_parse] INFO 'AN' is not defined in the header, assuming Type=String
 [W::vcf_parse] INFO 'DP' is not defined in the header, assuming Type=String
 [W::vcf_parse] INFO 'AFR_AF' is not defined in the header, assuming Type=String
 [W::vcf_parse] INFO 'EX_TARGET' is not defined in the header, assuming Type=String
-Time for writing output: 0.022923
-Total elapsed time for analysis = 0.378794 sec
+Time for writing output: 0.127273
+Total elapsed time for analysis = 0.70501 sec
 
 Mean phase confidence of each target individual:
 ID	PHASE_CONFIDENCE
-HG00403	0.949849
-HG00404	0.953339
-HG00406	0.927222
-HG00407	0.948768
-HG00419	0.939907
-HG00421	0.939943
-HG00422	0.953731
-HG00428	0.944653
+HG00403	0.953163
+HG00404	0.949485
+HG00406	0.926717
+HG00407	0.950292
+HG00419	0.938822
+HG00421	0.93367
+HG00422	0.952224
+HG00428	0.944651

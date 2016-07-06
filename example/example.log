@@ -1,7 +1,7 @@
                       +-----------------------------+
                       |                             |
-                      |   Eagle v2.0                |
-                      |   May 3, 2016               |
+                      |   Eagle v2.1                |
+                      |   July 6, 2016              |
                       |   Po-Ru Loh                 |
                       |                             |
                       +-----------------------------+
@@ -45,34 +45,33 @@ MAF spectrum:
     40-50%:     214
 Physical distance range: 9752235 base pairs
 Genetic distance range:  23.0881 cM
-Average # SNPs per cM:   79   (recommended: 50-500 SNPs/cM)
+Average # SNPs per cM:   79
 Auto-selecting --maxBlockLen: 0.25 cM
 Number of <=(64-SNP, 0.25cM) segments: 68
 Average # SNPs per segment: 26
 Estimating LD scores using 379 indivs
-Identified 0 trio children
 
 BEGINNING STEP 1
 
-Time for step 1: 0.391085
-Time for step 1 MN^2: 0.0253452
+Time for step 1: 0.385727
+Time for step 1 MN^2: 0.0254815
 
-Making hard calls (time: 0.028374)
+Making hard calls (time: 0.028492)
 
 
 BEGINNING STEP 2
 
 BATCH 1 OF 1
 Building hash tables
-.................................................................. (time: 0.0520802)
+.................................................................. (time: 0.051198)
 
 Phasing samples 1-379
-Time for phasing batch: 0.634545
+Time for phasing batch: 0.46407
 
-Making hard calls (time: 0.0300572)
+Making hard calls (time: 0.029583)
 
-Time for step 2: 0.716716
-Time for step 2 MN^2: 0.0599726
+Time for step 2: 0.544882
+Time for step 2 MN^2: 0.0599234
 
 
 BEGINNING STEP 3 (PBWT ITERS)
@@ -84,191 +83,109 @@ BEGINNING PBWT ITER 1
 
 BATCH 1 OF 10
 
-Making HapHedge
-Built PBWT on 758 haplotypes
-Time for HapHedge: 0.0227151
-
 Phasing samples 1-37
-Time for phasing batch: 1.53946
+Time for phasing batch: 1.87944
 
 BATCH 2 OF 10
 
-Making HapHedge
-Built PBWT on 758 haplotypes
-Time for HapHedge: 0.0222001
-
 Phasing samples 38-75
-Time for phasing batch: 1.4668
+Time for phasing batch: 1.73494
 
 BATCH 3 OF 10
 
-Making HapHedge
-Built PBWT on 758 haplotypes
-Time for HapHedge: 0.0220759
-
 Phasing samples 76-113
-Time for phasing batch: 1.52374
+Time for phasing batch: 1.8114
 
 BATCH 4 OF 10
 
-Making HapHedge
-Built PBWT on 758 haplotypes
-Time for HapHedge: 0.0218792
-
 Phasing samples 114-151
-Time for phasing batch: 1.47212
+Time for phasing batch: 1.74413
 
 BATCH 5 OF 10
 
-Making HapHedge
-Built PBWT on 758 haplotypes
-Time for HapHedge: 0.0217438
-
 Phasing samples 152-189
-Time for phasing batch: 1.47189
+Time for phasing batch: 1.71961
 
 BATCH 6 OF 10
 
-Making HapHedge
-Built PBWT on 758 haplotypes
-Time for HapHedge: 0.0217941
-
 Phasing samples 190-227
-Time for phasing batch: 1.46813
+Time for phasing batch: 1.7627
 
 BATCH 7 OF 10
 
-Making HapHedge
-Built PBWT on 758 haplotypes
-Time for HapHedge: 0.021697
-
 Phasing samples 228-265
-Time for phasing batch: 1.4785
+Time for phasing batch: 1.90356
 
 BATCH 8 OF 10
 
-Making HapHedge
-Built PBWT on 758 haplotypes
-Time for HapHedge: 0.0213811
-
 Phasing samples 266-303
-Time for phasing batch: 1.37096
+Time for phasing batch: 1.6901
 
 BATCH 9 OF 10
 
-Making HapHedge
-Built PBWT on 758 haplotypes
-Time for HapHedge: 0.021404
-
 Phasing samples 304-341
-Time for phasing batch: 1.44121
+Time for phasing batch: 1.70083
 
 BATCH 10 OF 10
 
-Making HapHedge
-Built PBWT on 758 haplotypes
-Time for HapHedge: 0.021311
-
 Phasing samples 342-379
-Time for phasing batch: 1.41961
+Time for phasing batch: 1.71936
 
-Time for PBWT iter 1: 14.8707
-Time for PBWT iter 1 impMissing: 0.423079
+Time for PBWT iter 1: 17.6661
 
 BEGINNING PBWT ITER 2
 
 BATCH 1 OF 10
 
-Making HapHedge
-Built PBWT on 758 haplotypes
-Time for HapHedge: 0.0222549
-
 Phasing samples 1-37
-Time for phasing batch: 2.40246
+Time for phasing batch: 2.95428
 
 BATCH 2 OF 10
 
-Making HapHedge
-Built PBWT on 758 haplotypes
-Time for HapHedge: 0.0229151
-
 Phasing samples 38-75
-Time for phasing batch: 2.21953
+Time for phasing batch: 2.79899
 
 BATCH 3 OF 10
 
-Making HapHedge
-Built PBWT on 758 haplotypes
-Time for HapHedge: 0.0223289
-
 Phasing samples 76-113
-Time for phasing batch: 2.32099
+Time for phasing batch: 3.06104
 
 BATCH 4 OF 10
 
-Making HapHedge
-Built PBWT on 758 haplotypes
-Time for HapHedge: 0.0224059
-
 Phasing samples 114-151
-Time for phasing batch: 2.2585
+Time for phasing batch: 2.8034
 
 BATCH 5 OF 10
 
-Making HapHedge
-Built PBWT on 758 haplotypes
-Time for HapHedge: 0.0223758
-
 Phasing samples 152-189
-Time for phasing batch: 2.21726
+Time for phasing batch: 2.83301
 
 BATCH 6 OF 10
 
-Making HapHedge
-Built PBWT on 758 haplotypes
-Time for HapHedge: 0.0227039
-
 Phasing samples 190-227
-Time for phasing batch: 2.27005
+Time for phasing batch: 2.82531
 
 BATCH 7 OF 10
 
-Making HapHedge
-Built PBWT on 758 haplotypes
-Time for HapHedge: 0.0223072
-
 Phasing samples 228-265
-Time for phasing batch: 2.2776
+Time for phasing batch: 2.82557
 
 BATCH 8 OF 10
 
-Making HapHedge
-Built PBWT on 758 haplotypes
-Time for HapHedge: 0.0228999
-
 Phasing samples 266-303
-Time for phasing batch: 2.16219
+Time for phasing batch: 2.63469
 
 BATCH 9 OF 10
 
-Making HapHedge
-Built PBWT on 758 haplotypes
-Time for HapHedge: 0.022361
-
 Phasing samples 304-341
-Time for phasing batch: 2.20874
+Time for phasing batch: 2.75041
 
 BATCH 10 OF 10
 
-Making HapHedge
-Built PBWT on 758 haplotypes
-Time for HapHedge: 0.0224109
-
 Phasing samples 342-379
-Time for phasing batch: 2.20422
+Time for phasing batch: 2.78439
 
-Time for PBWT iter 2: 22.7666
-Time for PBWT iter 2 impMissing: 0.687848
+Time for PBWT iter 2: 28.2711
 Writing .haps.gz and .sample output
-Time for writing output: 0.295752
-Total elapsed time for analysis = 40.001 sec
+Time for writing output: 0.403441
+Total elapsed time for analysis = 47.4231 sec
