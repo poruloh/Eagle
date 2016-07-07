@@ -249,7 +249,7 @@ int main(int argc, char *argv[]) {
 
   Eagle eagle(genoData.getN(), genoData.getMseg64(), genoData.getGenoBits(),
 	      genoData.getSeg64cMvecs(), genoData.getSeg64logPs(), invLD64j, genoData.getIndivs(),
-	      genoData.getSnps(), params.maskFile, params.pErr);
+	      genoData.getSnps(), params.maskFile, genoData.getIsFlipped64j(), params.pErr);
   
   map <string, pair <string, string> > trioIIDs;
   vector <uint> children, nF1s, nF2s;

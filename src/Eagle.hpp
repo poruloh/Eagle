@@ -90,6 +90,7 @@ namespace EAGLE {
     const std::vector <IndivInfoX> indivs;
     const std::vector <SnpInfoX> snps; // M-vector
     std::vector <uchar> maskIndivs; // N-vector: 0 to ignore indivs (e.g., relatives)
+    std::vector <bool> isFlipped64j; // in non-ref mode, SNPs are internally flipped to 0=A2=major
     const double logPerr; // genotype error rate
     
     void init(void);
@@ -155,7 +156,8 @@ namespace EAGLE {
     Eagle(uint64 _N, uint64 _Mseg64, const uint64_masks *_genoBits,
 	  std::vector < std::vector <double> > _seg64cMvecs, const AlleleFreqs *_seg64freqs,
 	  std::vector <double> _invLD64j, const std::vector <IndivInfoX> &_indivs,
-	  const std::vector <SnpInfoX> &_snps, const std::string &maskFile, double _pErr);
+	  const std::vector <SnpInfoX> &_snps, const std::string &maskFile,
+	  const std::vector <bool> &isFlipped64j, double _pErr);
     // constructor for ref-mode
     Eagle(uint64 _Nref, uint64 _Ntarget, uint64 _Mseg64, const uint64_masks *_genoBits,
 	  std::vector < std::vector <double> > _seg64cMvecs, double _pErr);

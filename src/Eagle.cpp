@@ -134,10 +134,11 @@ namespace EAGLE {
   Eagle::Eagle(uint64 _N, uint64 _Mseg64, const uint64_masks *_genoBits,
 	       vector < vector <double> > _seg64cMvecs, const AlleleFreqs *_seg64logPs,
 	       vector <double> _invLD64j, const vector <IndivInfoX> &_indivs,
-	       const vector <SnpInfoX> &_snps, const string &maskFile, double _pErr) :
+	       const vector <SnpInfoX> &_snps, const string &maskFile,
+	       const vector <bool> &_isFlipped64j, double _pErr) :
     N(_N), Nref(0), Mseg64(_Mseg64), genoBits(_genoBits), seg64cMvecs(_seg64cMvecs),
     seg64logPs(_seg64logPs), invLD64j(_invLD64j), indivs(_indivs), snps(_snps),
-    logPerr(log10(_pErr)) {
+    isFlipped64j(_isFlipped64j), logPerr(log10(_pErr)) {
 
     init();
     
@@ -163,6 +164,7 @@ namespace EAGLE {
     seg64cMvecs(_seg64cMvecs), logPerr(log10(_pErr)) {
 
     init();
+    isFlipped64j = vector <bool> (Mseg64*64); // no flipping in ref mode
     
     tmpHaploBitsT = ALIGNED_MALLOC_UINT64S(2*(N-Nref)*Mseg64);
 
@@ -3117,6 +3119,10 @@ namespace EAGLE {
 	  hapBit1 = !((haploBits[(m64j/64)*2*N + 2*n0]>>(m64j&63))&1);
 	  hapBit2 = !((haploBits[(m64j/64)*2*N + 2*n0+1]>>(m64j&63))&1);
 	}
+	if (isFlipped64j[m64j]) {
+	  hapBit1 = !hapBit1;
+	  hapBit2 = !hapBit2;
+	}
 	hapsGzOut << " " << hapBit1 << " " << hapBit2;
       }
       hapsGzOut << endl;
@@ -3219,7 +3225,9 @@ namespace EAGLE {
 	      for (int j = 0; j < ploidy; j++) {
 		uint64 nTargetHap = 2*i + j;
 		int altIdx = missing ? 1 : maxIdx;
-		int idx = ((tmpHaploBitsT[nTargetHap*Mseg64+(m64j/64)]>>(m64j&63))&1) ? altIdx : 0;
+		int hapBit = (tmpHaploBitsT[nTargetHap*Mseg64+(m64j/64)]>>(m64j&63))&1;
+		if (isFlipped64j[m64j]) hapBit = !hapBit;
+		int idx = hapBit ? altIdx : 0;
 		ptr[j] = bcf_gt_phased(idx); // convert allele index to bcf value (phased)
 	      }
 	    }

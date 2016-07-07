@@ -73,6 +73,7 @@ namespace EAGLE {
     std::vector <std::vector <double> > seg64cMvecs;
     std::vector <std::vector <uint64> > seg64preQCsnpInds;
     AlleleFreqs *seg64logPs;
+    std::vector <bool> isFlipped64j;
 
     std::vector <bool> processIndivs(const std::string &famFile,
 				     const std::vector <std::string> &removeFiles);
@@ -119,6 +120,7 @@ namespace EAGLE {
     IndivInfoX getIndiv(uint64 n) const;
     std::vector <double> computeInvLD64j(uint64 NsubMax) const;
     const std::vector <IndivInfoX> &getIndivs(void) const;
+    const std::vector <bool> &getIsFlipped64j(void) const;
 
   };
 }

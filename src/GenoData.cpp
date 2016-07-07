@@ -20,6 +20,7 @@
 #include <fstream>
 #include <sstream>
 #include <map>
+#include <algorithm>
 #include <cstring>
 #include <cmath>
 
@@ -316,6 +317,7 @@ namespace EAGLE {
     cout << "Number of <=(64-SNP, " << cMmax << "cM) segments: " << Mseg64 << endl;
     cout << "Average # SNPs per segment: " << M / Mseg64 << endl;
 
+    isFlipped64j = vector <bool> (Mseg64*64);
     genoBits = ALIGNED_MALLOC_UINT64_MASKS(Mseg64 * N);
     memset(genoBits, 0, Mseg64 * N * sizeof(genoBits[0]));
     seg64logPs = (AlleleFreqs *) ALIGNED_MALLOC(Mseg64*64 * sizeof(AlleleFreqs));
@@ -327,14 +329,24 @@ namespace EAGLE {
     for (uint64 m64 = 0; m64 < Mseg64; m64++) {
       for (uint64 j = 0; j < seg64preQCsnpInds[m64].size(); j++) {
         uint64 m = seg64preQCsnpInds[m64][j]; // m, n indices are preQC
-	uint64 nPostQC = 0;
 	int genoCounts[3]; genoCounts[0] = genoCounts[1] = genoCounts[2] = 0;
 	for (uint64 n = 0; n < NpreQC; n++)
 	  if (indivsPreQC[n].passQC) {
 	    uchar geno = genosPreQC[m * NpreQC + n];
 	    if (geno != 9) genoCounts[geno]++;
-	    genoBits[m64 * N + nPostQC].is0 |= ((uint64) (geno == 0))<<j;
-	    genoBits[m64 * N + nPostQC].is2 |= ((uint64) (geno == 2))<<j;
+	  }
+	uchar is0geno = 0, is2geno = 2;
+	if (genoCounts[2] > genoCounts[0]) {
+	  isFlipped64j[m64*64+j] = true;
+	  is0geno = 2; is2geno = 0;
+	  std::swap(genoCounts[0], genoCounts[2]);
+	}
+	uint64 nPostQC = 0;
+	for (uint64 n = 0; n < NpreQC; n++)
+	  if (indivsPreQC[n].passQC) {
+	    uchar geno = genosPreQC[m * NpreQC + n];
+	    genoBits[m64 * N + nPostQC].is0 |= ((uint64) (geno == is0geno))<<j;
+	    genoBits[m64 * N + nPostQC].is2 |= ((uint64) (geno == is2geno))<<j;
 	    genoBits[m64 * N + nPostQC].is9 |= ((uint64) (geno == 9))<<j;
 	    nPostQC++;
 	  }
@@ -370,7 +382,7 @@ namespace EAGLE {
 	af.cond[0][5] = log10safe((1-p) * p0 / (p0 + p1half));
 
 	if (p > 0.55) {
-	  cerr << "ERROR: Minor/major alleles must be coded as A1/A2 (e.g., using plink)" << endl;
+	  cerr << "INTERNAL ERROR: Minor/major allele coding bug" << endl;
 	  exit(1);
 	}
       }
@@ -688,5 +700,6 @@ namespace EAGLE {
   const AlleleFreqs *GenoData::getSeg64logPs(void) const { return seg64logPs; }
   IndivInfoX GenoData::getIndiv(uint64 n) const { return indivs[n]; }
   const vector <IndivInfoX> &GenoData::getIndivs(void) const { return indivs; }
+  const vector <bool> &GenoData::getIsFlipped64j(void) const { return isFlipped64j; }
 
 };
