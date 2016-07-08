@@ -186,6 +186,9 @@ namespace EAGLE {
     void writeVcf(const std::string &tmpFile, const std::string &outFile, double bpStart,
 		  double bpEnd, const std::string &writeMode, bool noImpMissing, int argc,
 		  char**argv) const;
+    void writeVcfNonRef(const std::string &vcfFile, const std::string &outFile, int inputChrom,
+			double bpStart, double bpEnd, const std::string &writeMode, int argc,
+			char **argv) const;
     void makeHardCalls(uint64 n0start, uint64 n0end, uint seed);
     void initRefIter(int refIter);
     void buildHashTables(int iter, int batch, int seed);

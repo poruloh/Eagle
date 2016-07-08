@@ -3254,6 +3254,95 @@ namespace EAGLE {
     remove(tmpFile.c_str());
   }
 
+  // write phased output in non-ref mode
+  // differences from the above (ref-mode) are as follows:
+  // - does not take noImpMissing arg
+  // - checks chrom
+  // - does not increment m64j outside the bpStart-bpEnd region
+  // - does not delete tmpFile (now vcfFile with original input)
+  void Eagle::writeVcfNonRef(const string &vcfFile, const string &outFile, int inputChrom,
+			     double bpStart, double bpEnd, const string &writeMode, int argc,
+			     char **argv) const {
+
+    htsFile *htsIn = hts_open(vcfFile.c_str(), "r");
+    htsFile *out = hts_open(outFile.c_str(), writeMode.c_str());
+    
+    bcf_hdr_t *hdr = bcf_hdr_read(htsIn);
+    bcf_hdr_append_eagle_version(hdr, argc, argv);
+    bcf_hdr_write(out, hdr);
+
+    bcf1_t *rec = bcf_init1();
+    int mtgt_gt = 0, *tgt_gt = NULL;
+
+    uint64 m64j = 0; // SNP index; update to correspond to current record
+
+    while (bcf_read(htsIn, hdr, rec) >= 0) {
+      /// check CHROM
+      if (inputChrom != 0) {
+	int chrom;
+	sscanf(bcf_hdr_id2name(hdr, rec->rid), "%d", &chrom);
+	if (chrom != inputChrom)
+	  continue;
+      }
+
+      int bp = rec->pos+1;
+      if (bpStart <= bp && bp <= bpEnd) { // check if within output region
+	int ntgt_gt = bcf_get_genotypes(hdr, rec, &tgt_gt, &mtgt_gt);
+      
+	for (int i = 0; i < (int) (N-Nref); i++) {
+	  int ploidy = 2;
+	  int *ptr = tgt_gt + i*ploidy;
+
+	  bool missing = false;
+	  int minIdx = 1000, maxIdx = 0; // (shouldn't matter; SNPs should be biallelic)
+	  for (int j = 0; j < ploidy; j++) {
+	    if ( bcf_gt_is_missing(ptr[j]) ) { // missing allele
+	      missing = true;
+	    }
+	    else {
+	      int idx = bcf_gt_allele(ptr[j]); // allele index
+	      minIdx = std::min(minIdx, idx);
+	      maxIdx = std::max(maxIdx, idx);
+	    }
+	  }
+
+	  if (!missing && minIdx == maxIdx) { // hom => same allele
+	    ptr[0] = ptr[1] = bcf_gt_phased(minIdx);
+	  }
+	  else if (!missing && minIdx > 0) { // ALT1/ALT2 het => don't phase (shouldn't happen)
+	    ptr[0] = ptr[1] = bcf_gt_missing;
+	  }
+	  else { // REF/ALT* het => phase as called by Eagle
+	    for (int j = 0; j < ploidy; j++) {
+	      uint64 nTargetHap = 2*i + j;
+	      int altIdx = missing ? 1 : maxIdx;
+	      int hapBit = (tmpHaploBitsT[nTargetHap*Mseg64+(m64j/64)]>>(m64j&63))&1;
+	      if (isFlipped64j[m64j]) hapBit = !hapBit;
+	      int idx = hapBit ? altIdx : 0;
+	      ptr[j] = bcf_gt_phased(idx); // convert allele index to bcf value (phased)
+	    }
+	  }
+	}
+
+	bcf_update_genotypes(hdr, rec, tgt_gt, ntgt_gt);
+
+	bcf_write(out, hdr, rec);
+
+	m64j++;
+	if ((m64j&63) == seg64cMvecs[m64j/64].size())
+	  m64j = (m64j + 64ULL) & ~63ULL; // move to next segment
+      }
+    }
+
+    assert(m64j == Mseg64*64);
+
+    free(tgt_gt);
+    bcf_destroy(rec);
+    bcf_hdr_destroy(hdr);
+    hts_close(out);
+    hts_close(htsIn);
+  }
+
   void Eagle::makeHardCalls(uint64 n0start, uint64 n0end, uint seed) {
     // fast rng: last 16 bits of Marsaglia's MWC
     uint w = 521288629;

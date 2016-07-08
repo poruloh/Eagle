@@ -24,6 +24,8 @@
 #include <cstring>
 #include <cmath>
 
+#include <htslib/vcf.h>
+
 #include "Types.hpp"
 #include "FileUtils.hpp"
 #include "MemoryUtils.hpp"
@@ -298,7 +300,7 @@ namespace EAGLE {
 
   inline double log10safe(double x) { return x > 0 ? log10(x) : -1000; }
 
-  void GenoData::buildGenoBits(uchar *genosPreQC, double cMmax) {
+  void GenoData::buildGenoBits(uchar *genosPreQC, const vector <bool> &genos2bit, double cMmax) {
     const uint segMin = 16;
     vector <uint64> preQCsnpInds; vector <double> cMvec;
     for (uint64 m = 0; m < MpreQC; m++)
@@ -331,9 +333,10 @@ namespace EAGLE {
         uint64 m = seg64preQCsnpInds[m64][j]; // m, n indices are preQC
 	int genoCounts[3]; genoCounts[0] = genoCounts[1] = genoCounts[2] = 0;
 	for (uint64 n = 0; n < NpreQC; n++)
-	  if (indivsPreQC[n].passQC) {
-	    uchar geno = genosPreQC[m * NpreQC + n];
-	    if (geno != 9) genoCounts[geno]++;
+	  if (indivsPreQC.empty() || indivsPreQC[n].passQC) {
+	    uchar geno = genosPreQC != NULL ? genosPreQC[m * NpreQC + n] :
+	      (genos2bit[2*(m * NpreQC + n)] + 2*genos2bit[2*(m * NpreQC + n)+1]);
+	    if (geno <= 2) genoCounts[geno]++;
 	  }
 	uchar is0geno = 0, is2geno = 2;
 	if (genoCounts[2] > genoCounts[0]) {
@@ -343,11 +346,12 @@ namespace EAGLE {
 	}
 	uint64 nPostQC = 0;
 	for (uint64 n = 0; n < NpreQC; n++)
-	  if (indivsPreQC[n].passQC) {
-	    uchar geno = genosPreQC[m * NpreQC + n];
+	  if (indivsPreQC.empty() || indivsPreQC[n].passQC) {
+	    uchar geno = genosPreQC != NULL ? genosPreQC[m * NpreQC + n] :
+	      (genos2bit[2*(m * NpreQC + n)] + 2*genos2bit[2*(m * NpreQC + n)+1]);
 	    genoBits[m64 * N + nPostQC].is0 |= ((uint64) (geno == is0geno))<<j;
 	    genoBits[m64 * N + nPostQC].is2 |= ((uint64) (geno == is2geno))<<j;
-	    genoBits[m64 * N + nPostQC].is9 |= ((uint64) (geno == 9))<<j;
+	    genoBits[m64 * N + nPostQC].is9 |= ((uint64) (geno > 2))<<j;
 	    nPostQC++;
 	  }
 	double tot = genoCounts[0] + genoCounts[1] + genoCounts[2];
@@ -519,11 +523,11 @@ namespace EAGLE {
    * reads indiv info from fam file, snp info from bim file
    * allocates memory, reads genotypes, and does QC
    */
-  GenoData::GenoData(const string &famFile, const string &bimFile,
-		     const string &bedFile, int chrom, double bpStart, double bpEnd,
-		     const string &geneticMapFile, const vector <string> &excludeFiles,
-		     const vector <string> &removeFiles, double maxMissingPerSnp,
-		     double maxMissingPerIndiv, bool noMapCheck, double cMmax) {
+  void GenoData::initBed(const string &famFile, const string &bimFile, const string &bedFile,
+			 int chrom, double bpStart, double bpEnd, const string &geneticMapFile,
+			 const vector <string> &excludeFiles, const vector <string> &removeFiles,
+			 double maxMissingPerSnp, double maxMissingPerIndiv, bool noMapCheck,
+			 double cMmax) {
     
     // indivsPreQC (without --remove indivs)
     vector <bool> bedIndivRemoved = processIndivs(famFile, removeFiles);
@@ -643,9 +647,121 @@ namespace EAGLE {
       cout << "Auto-selecting --maxBlockLen: " << cMmax << " cM" << endl;    
     }
 
-    buildGenoBits(genosPreQC, cMmax);
+    vector <bool> nullVec;
+    buildGenoBits(genosPreQC, nullVec, cMmax);
 
     ALIGNED_FREE(genosPreQC);
+  }
+
+  /**    
+   * reads genotypes from VCF/BCF file
+   * does not save indiv info (will be reread from VCF during output)
+   * only saves chrom, physpos, genpos in snp info (rest will be reread from VCF during output)
+   * allocates memory, reads genotypes, and restricts to region if specified; does not do QC
+   */
+  void GenoData::initVcf(const string &vcfFile, const int inputChrom, double bpStart, double bpEnd,
+			 const string &geneticMapFile, bool noMapCheck, double cMmax) {
+    
+    htsFile *fin = hts_open(vcfFile.c_str(), "r");
+    bcf_hdr_t *hdr = bcf_hdr_read(fin);
+    bcf1_t *rec = bcf_init1();
+    int mgt = 0, *gt = NULL;
+
+    NpreQC = bcf_hdr_nsamples(hdr);
+    cout << "Reading genotypes for N = " << NpreQC << " samples" << endl;
+    vector <bool> genos2bit;
+
+    int wantChrom = inputChrom; // might be 0; if so, update
+    // read genos; save chrom and physpos for each SNP
+    while (bcf_read(fin, hdr, rec) >= 0) {
+      /// check CHROM
+      int chrom;
+      sscanf(bcf_hdr_id2name(hdr, rec->rid), "%d", &chrom);
+      if (!(chrom >= 1 && chrom <= 22)) {
+	cerr << "ERROR: Invalid chromosome number: " << bcf_hdr_id2name(hdr, rec->rid) << endl;
+	exit(1);
+      }
+      if (wantChrom == 0) wantChrom = chrom; // if --chrom was not specified, set to first
+      if (chrom != wantChrom) { // only allow multi-chrom file if --chrom has been specified
+	if (inputChrom == 0) {
+	  cerr << "ERROR: File contains data for >1 chromosome; specify one with --chrom" << endl;
+	  exit(1);
+	}
+	else
+	  continue;
+      }
+
+      // check if POS is within selected region
+      int bp = rec->pos+1;
+      if (!(bpStart <= bp && bp <= bpEnd)) continue;
+      
+      // check for multi-allelics (TODO: ignore with warning and don't phase in output)
+      if (rec->n_allele > 2) {
+	cerr << "ERROR: Multi-allelic site found (i.e., ALT contains multiple alleles)" << endl;
+	cerr << "       Either drop or split (bcftools norm -m) multi-allelic variants" << endl;
+	exit(1);
+      }
+
+      // add chrom and bp to SNP list
+      SnpInfoX snp; snp.chrom = chrom; snp.physpos = bp;
+      snpsPreQC.push_back(snp);
+
+      // read genotypes
+      int ngt = bcf_get_genotypes(hdr, rec, &gt, &mgt);
+      if (ngt != 2 * (int) NpreQC) {
+	cerr << "ERROR: Non-diploid sample found" << endl;
+	exit(1);
+      }
+      for (int i = 0; i < (int) NpreQC; i++) {
+	int ploidy = 2;
+	int *ptr = gt + i*ploidy;
+
+	uchar geno = 0;
+	bool missing = false;
+	for (int j = 0; j < ploidy; j++) {
+	  if ( bcf_gt_is_missing(ptr[j]) ) // missing allele
+	    missing = true;
+	  else
+	    geno += bcf_gt_allele(ptr[j]); // 0=REF, 1=ALT (multi-allelics prohibited)
+	}
+
+	if (missing) geno = 3;
+	genos2bit.push_back(geno&1);
+	genos2bit.push_back(geno>>1);
+      }
+    }
+
+    free(gt);
+    bcf_destroy(rec);
+    bcf_hdr_destroy(hdr);
+    hts_close(fin);
+
+    cout << "Read M = " << snpsPreQC.size() << " variants" << endl;
+    processMap(snpsPreQC, geneticMapFile, noMapCheck); // modify snpsPreQC
+
+    // don't perform QC; use all SNPs
+    MpreQC = snpsPreQC.size();
+    for (uint64 m = 0; m < MpreQC; m++)
+      snpsPreQC[m].passQC = true;
+    snps = snpsPreQC;
+    M = snps.size();
+
+    // don't perform QC; use all samples
+    N = NpreQC;
+
+    cout << "Physical distance range: " << snps.back().physpos - snps[0].physpos
+	 << " base pairs" << endl;
+    cout << "Genetic distance range:  " << 100*(snps.back().genpos - snps[0].genpos)
+	 << " cM" << endl;
+    cout << "Average # SNPs per cM:   " << (int) (M/(100*(snps.back().genpos-snps[0].genpos))+0.5)
+	 << endl;
+
+    if (cMmax == 0) {
+      cMmax = std::min(1.0, std::max(N / 1e5, 0.25));
+      cout << "Auto-selecting --maxBlockLen: " << cMmax << " cM" << endl;    
+    }
+
+    buildGenoBits(NULL, genos2bit, cMmax);
   }
 
   GenoData::~GenoData() {

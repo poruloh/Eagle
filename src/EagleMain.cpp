@@ -240,10 +240,15 @@ int main(int argc, char *argv[]) {
   
   cout << endl << "=== Reading genotype data ===" << endl << endl;
 
-  GenoData genoData(params.famFile, params.bimFile, params.bedFile, params.chrom, params.bpStart,
-		    params.bpEnd, params.geneticMapFile, params.excludeFiles, params.removeFiles,
-		    params.maxMissingPerSnp, params.maxMissingPerIndiv, params.noMapCheck,
-		    params.cMmax);
+  GenoData genoData;
+  if (!params.vcfFile.empty())
+    genoData.initVcf(params.vcfFile, params.chrom, params.bpStart, params.bpEnd,
+		     params.geneticMapFile, params.noMapCheck, params.cMmax);
+  else 
+    genoData.initBed(params.famFile, params.bimFile, params.bedFile, params.chrom, params.bpStart,
+		     params.bpEnd, params.geneticMapFile, params.excludeFiles, params.removeFiles,
+		     params.maxMissingPerSnp, params.maxMissingPerIndiv, params.noMapCheck,
+		     params.cMmax);
 
   vector <double> invLD64j = genoData.computeInvLD64j(1000);
 
@@ -425,8 +430,16 @@ int main(int argc, char *argv[]) {
 
     /***** FINAL OUTPUT *****/
 
-    cout << "Writing .haps.gz and .sample output" << endl; timer.update_time();
-    eagle.writeHapsGzSample(params.outPrefix);
+    if (!params.vcfFile.empty()) {
+      string outFile = params.outPrefix + "." + params.vcfOutSuffix;
+      cout << "Writing " << params.vcfOutSuffix << " output to " << outFile << endl;
+      eagle.writeVcfNonRef(params.vcfFile, outFile, params.chrom, params.bpStart, params.bpEnd,
+			   params.vcfWriteMode, argc, argv);
+    }
+    else {
+      cout << "Writing .haps.gz and .sample output" << endl; timer.update_time();
+      eagle.writeHapsGzSample(params.outPrefix);
+    }
     cout << "Time for writing output: " << timer.update_time() << endl;
   }
   else if (params.iter == 1) { // PERFORM 1ST-ITER PHASING FOR A SMALL SUBSET ONLY (FOR TESTING)

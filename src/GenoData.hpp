@@ -81,7 +81,7 @@ namespace EAGLE {
 				   double bpEnd, const std::vector <std::string> &excludeFiles);
     void processMap(std::vector <SnpInfoX> &snpsVec, const std::string &geneticMapFile,
 		    bool noMapCheck);
-    void buildGenoBits(uchar *genosPreQC, double cMmax);
+    void buildGenoBits(uchar *genosPreQC, const std::vector <bool> &genos2bit, double cMmax);
     bool fillSnpSubRowNorm1(float x[], uint64 m64j, const std::vector <int> &indivInds) const;
 
   public:
@@ -90,11 +90,19 @@ namespace EAGLE {
      * allocates memory, reads genotypes, and does QC
      * assumes numbers of bim and bed files match
      */
-    GenoData(const std::string &famFile, const std::string &bimFile,
-	     const std::string &bedFile, int chrom, double bpStart, double bpEnd,
-	     const std::string &geneticMapFile, const std::vector <std::string> &excludeFiles,
-	     const std::vector <std::string> &removeFiles,
-	     double maxMissingPerSnp, double maxMissingPerIndiv, bool noMapCheck, double cMmax);
+    void initBed(const std::string &famFile, const std::string &bimFile,
+		 const std::string &bedFile, int chrom, double bpStart, double bpEnd,
+		 const std::string &geneticMapFile, const std::vector <std::string> &excludeFiles,
+		 const std::vector <std::string> &removeFiles, double maxMissingPerSnp,
+		 double maxMissingPerIndiv, bool noMapCheck, double cMmax);
+    /**    
+     * reads genotypes from VCF/BCF file
+     * does not save indiv info (will be reread from VCF during output)
+     * only saves chrom, physpos, genpos in snp info (rest will be reread from VCF during output)
+     * allocates memory, reads genotypes, and restricts to region if specified; does not do QC
+     */
+    void initVcf(const std::string &vcfFile, const int inputChrom, double bpStart, double bpEnd,
+		 const std::string &geneticMapFile, bool noMapCheck, double cMmax);
 
     ~GenoData();
 

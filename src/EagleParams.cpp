@@ -62,6 +62,7 @@ namespace EAGLE {
        "PLINK .fam file (note: file names ending in .gz are auto-decompressed)")
       ("bim", po::value<string>(&bimFile), "PLINK .bim file")
       ("bed", po::value<string>(&bedFile), "PLINK .bed file")
+      ("vcf", po::value<string>(&vcfFile), "[compressed] VCF/BCF file containing input genotypes")
       ("remove", po::value< vector <string> >(&removeFileTemplates),
        "file(s) listing individuals to ignore (no header; FID IID must be first two columns)")
       ("exclude", po::value< vector <string> >(&excludeFileTemplates),
@@ -178,9 +179,10 @@ namespace EAGLE {
       if (vm.count("bfile") +
 	  vm.count("bfilegz") +
 	  (vm.count("fam") || vm.count("bim") || vm.count("bed")) +
+	  vm.count("vcf") +
 	  (vm.count("vcfRef") || vm.count("vcfTarget")) != 1) {
-	cerr << "ERROR: Use exactly one of the --bfile, --bfilegz, --fam,bim,bed, or" << endl
-	     << "       --vcfRef,vcfTarget input formats" << endl;
+	cerr << "ERROR: Use exactly one of the --bfile, --bfilegz, --fam,bim,bed, --vcf, or"
+	     << endl << "       --vcfRef,vcfTarget input formats" << endl;
 	return false;
       }
 
@@ -210,24 +212,42 @@ namespace EAGLE {
       noImpMissing = vm.count("noImpMissing");
       allowRefAltSwap = vm.count("allowRefAltSwap");
 
-      if (vm.count("vcfRef") || vm.count("vcfTarget")) { // ref mode
-	if (vcfRef.empty()) {
-	  cerr << "ERROR: --vcfRef must be specified in reference-based phasing mode" << endl;
-	  return false;
+      if (vm.count("vcfRef") || vm.count("vcfTarget") || vm.count("vcf")) { // VCF mode
+	if (vm.count("vcf")) { // non-ref mode
+	  if (noImpMissing) {
+	    cerr << "ERROR: --noImpMissing is only supported in ref-mode" << endl;
+	    return false;
+	  }
+	  if (bpFlanking != 0) {
+	    cerr << "ERROR: --bpFlanking is only supported in ref-mode" << endl;
+	    return false;
+	  }
 	}
-	if (vcfTarget.empty()) {
-	  cerr << "ERROR: --vcfTarget must be specified in reference-based phasing mode" << endl;
-	  return false;
+	else { // ref-mode
+	  if (vcfRef.empty()) {
+	    cerr << "ERROR: --vcfRef must be specified in reference-based phasing mode" << endl;
+	    return false;
+	  }
+	  if (vcfTarget.empty()) {
+	    cerr << "ERROR: --vcfTarget must be specified in reference-based phasing mode" << endl;
+	    return false;
+	  }
+	  if (pbwtIters > 1 && noImpMissing) {
+	    cerr << "ERROR: --pbwtIters cannot be greater than 1 if --noImpMissing is set" << endl;
+	    return false;
+	  }
 	}
+
+	// vcf input checks for both ref and non-ref mode
 	if (geneticMapFile == "USE_BIM") {
-	  cerr << "ERROR: --geneticMapFile must be specified in reference-based phasing mode"
+	  cerr << "ERROR: --geneticMapFile must be specified when using VCF/BCF input"
 	       << endl;
 	  return false;
 	}
 	if (!removeFileTemplates.empty() || !excludeFileTemplates.empty() ||
 	    maxMissingPerSnp != 0.1 || maxMissingPerIndiv != 0.1) {
 	  cerr << "ERROR: --remove, --exclude, --maxMissingPerSnp, --maxMissingPerIndiv"
-	       << "       are not supported in reference-based phasing mode" << endl;
+	       << "       are not supported for VCF/BCF input or in reference mode" << endl;
 	  return false;
 	}
 	if (vcfOutFormat == "b") { vcfOutSuffix = "bcf"; vcfWriteMode = "wb"; }
@@ -238,12 +258,6 @@ namespace EAGLE {
 	  cerr << "ERROR: --vcfOutFormat must be one of {b,u,z,v}" << endl;
 	  return false;
 	}
-	/*
-	if (pbwtIters > 1 && noImpMissing) {
-	  cerr << "ERROR: --pbwtIters cannot be greater than 1 if --noImpMissing is set" << endl;
-	  return false;
-	}
-	*/
 	if (bpFlanking < 0) {
 	  cerr << "ERROR: --bpFlanking cannot be negative" << endl;
 	  return false;
@@ -265,12 +279,10 @@ namespace EAGLE {
 	       << endl;
 	  return false;
 	}
-	/*
 	if (noImpMissing) {
 	  cerr << "ERROR: --noImpMissing is only supported in ref-mode" << endl;
 	  return false;
 	}
-	*/
 	if (bpFlanking != 0) {
 	  cerr << "ERROR: --bpFlanking is only supported in ref-mode" << endl;
 	  return false;
