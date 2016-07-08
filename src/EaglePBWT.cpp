@@ -121,7 +121,8 @@ namespace EAGLE {
     // find split sites (for PBWT HapTree starts): hets and occasionally inter-het sites
     vector < pair <int, int> > tCallLocs; vector <int> tHomLocs;
     vector <uint64> splits64j;
-    splits64j.push_back(hets64j[0]);
+    if (!hets64j.empty())
+      splits64j.push_back(hets64j[0]);
     const double cMmaxSplit = 0.5;
     for (uint64 h = 1; h < hets64j.size(); h++) {
       int lastCallLoc = splits64j.size(); // old het ind + 1
