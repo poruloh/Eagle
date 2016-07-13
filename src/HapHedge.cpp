@@ -88,7 +88,7 @@ namespace EAGLE {
 	  // set hom before splits64j[h]
 	  int numErrsA = 0, numErrsB = 0;
 	  uint64 homStart = (h == 0 ? 0 : splits64j[h-1]+1);
-	  uint64 homStop = (h == splits64j.size() ? Mseg64*64 : splits64j[h]) - 1;
+	  uint64 homStop = (h == splits64j.size() ? Mseg64*64 : std::max(splits64j[h], 1ULL)) - 1;
 	  for (uint64 m64 = (homStart>>6); m64 <= (homStop>>6); m64++) {
 	    uint64 mask = -1ULL;
 	    if (m64 == (homStart>>6))
