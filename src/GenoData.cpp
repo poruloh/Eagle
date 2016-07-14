@@ -258,10 +258,6 @@ namespace EAGLE {
     MpreQC = snpsPreQC.size();
     cout << "Total SNPs stored in memory: MpreQC = " << MpreQC << endl;
 
-    if (MpreQC < 10) {
-      cout << "ERROR: Too few SNPs" << endl;
-    }
-
     return bedSnpExcluded;
   }
 
