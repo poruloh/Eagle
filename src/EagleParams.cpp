@@ -120,6 +120,8 @@ namespace EAGLE {
       // experimental options
       ("usePS", po::value<int>(&usePS)->default_value(0),
        "use FORMAT:PS phase constraints in target VCF: 1=soft, 2=harder")
+      ("runStep2", po::value<int>(&runStep2)->default_value(-1),
+       "enable/disable Step 2 of non-ref algorithm (-1=auto)")
 
       // Eagle1 advanced options
       ("v1fast", "Eagle1 fast mode: --maxBlockLen=0.3, --maxStatePairsStep4=100, --fracStep4=0.5")

@@ -48,6 +48,7 @@ namespace EAGLE {
 
     bool allowRefAltSwap; // in reference-based phasing mode
     bool usePBWT;
+    int runStep2; // in non-ref mode
     int pbwtIters;
     float expectIBDcM; // expected length of an IBD segment (for transition probabilities)
     double histFactor; // history length multiplier
