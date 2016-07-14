@@ -222,18 +222,35 @@ namespace EAGLE {
     hapPrefixSizes[nextMod] = 0;
   }
 
+  /*
+   * At any point along a haplotype path (i.e., a sequence of alleles at split sites),
+   * we have stored a "split list" of positions at which the last copied segment could have begun.
+   * We can compute the relative probabilities of these split positions (given the next allele),
+   * which allows us to sample the last copied segment.
+   *
+   * INPUT: (t, hapPathInd, tBit) designating a stored haplotype path extended to tBit at t
+   * - t = position; (t % HAPWAVES_HIST) is index in haplotype paths ending in hom region before t
+   * - hapPathInd = index
+   * - tBit = haplotype bit at t (to which to extend haplotype prefixes in split list)
+   *
+   * OUTPUT: (tStart, state) designating a haplotype segment randomly sampled from the split list
+   * - tStart = start position of copied segment
+   * - state = state corresponding to copied segment in HapTree at tStart
+   */
   void HapWaves::sampleLastPrefix(int &tStart, HapTreeState &state, int t, int hapPathInd,
 				  int tBit) {
-    assert(tCur+1 - t < HAPWAVES_HIST);
+    assert(tCur+1 - t < HAPWAVES_HIST); // the relevant history shouldn't have been overwritten
     int tMod = t % HAPWAVES_HIST;
     const HapPath &hapPath = hapPaths[tMod][hapPathInd];
     
+    // compute (unscaled) probabilities of each possible split point in the list
     float relProbStopNext = 0;
-
     vector <float> cumRelProbStopNext(hapPath.splitListLength);
     for (int j = 0; j < hapPath.splitListLength; j++) {
       const HapPathSplit &split = hapPath.splitList[j];
       const HapPrefix &hapPrefix = hapPrefixes[tMod][split.hapPrefixInd];
+      // this computation was previously done to determine the relative probabilities
+      // of extending the path to tBit=0 vs. tBit=1 at tree index t (= split site t-1)
       relProbStopNext += split.relProbLastStop * hapPrefix.toHetOnlyProb[tBit]
 	* recombP(t, split.t);
       cumRelProbStopNext[j] = relProbStopNext;
@@ -243,10 +260,10 @@ namespace EAGLE {
     if (relProbStopNext != 0) relLogP = logf(relProbStopNext);
     assert(hapPaths[tMod][hapPathInd].toCumLogP[tBit] == hapPath.cumLogP + relLogP);
 
+    // randomly sample a split point
     float r = rand01();
-
     for (int j = 0; j < hapPath.splitListLength; j++)
-      if (cumRelProbStopNext[j]/relProbStopNext > r || j+1 == hapPath.splitListLength) {
+      if (cumRelProbStopNext[j] > r*relProbStopNext || j+1 == hapPath.splitListLength) {
 	const HapPathSplit &split = hapPath.splitList[j];
 	const HapPrefix &hapPrefix = hapPrefixes[tMod][split.hapPrefixInd];
 	tStart = split.t;
@@ -484,6 +501,17 @@ namespace EAGLE {
     }
   }
 
+  /*
+   * INPUT:
+   * - tCallLoc = tree index of left side of interval of interest: (tCallLoc, tCallLoc+1)
+   * - callLength = number of positions to look ahead
+   * - samples = number of random samples to take
+   * - bestHaps = actual indices of Kpbwt haplotypes currently encoded in HapHedgeErr
+   * - isFwd = flag indicating whether output het masks should be little- or big-endian
+   *
+   * OUTPUT:
+   * - vector of sampled reference haplotype pairs
+   */
   vector <HapPair> DipTree::sampleRefs(int tCallLoc, int callLength, int samples,
 				       const vector <uint> &bestHaps, bool isFwd) {
     if (callLength > HAPWAVES_HIST-5) {
@@ -492,45 +520,56 @@ namespace EAGLE {
       cerr << "      To use this callLength, increase HAPWAVES_HIST and recompile" << endl;
       assert(callLength <= HAPWAVES_HIST-5);
     }
-    assert(tCallLoc>=0 && tCallLoc<T);
-    int tFront = std::min(T, tCallLoc + callLength);
+    assert(tCallLoc>=0 && tCallLoc<T-1); // (tCallLoc, tCallLoc+1) must be a valid interval
+    int tFront = std::min(T, tCallLoc + callLength); // look ahead approx. callLength positions
     while (tCur < tFront)
       advance();
 
-    float probTot = 0;
+    float probTot = 0; // compute total probability of saved DipTree nodes at current pos (tFront)
     for (int i = 0; i < (int) nodes[tFront].size(); i++)
       probTot += normProbs[tFront][i];
 
     vector <HapPair> ret(samples);
 
     for (int s = 0; s < samples; s++) {
+      // randomly sample a DipTree node
       float r = rand01();
       float cumProb = 0;
       for (int i = 0; i < (int) nodes[tFront].size(); i++) {
-	cumProb += normProbs[tFront][i] / probTot;
-	if (cumProb > r || i+1 == (int) nodes[tFront].size()) {
+	cumProb += normProbs[tFront][i];
+	if (cumProb > r*probTot || i+1 == (int) nodes[tFront].size()) {
+	  // sample a reference haplotype for each parental path in the sampled DipTree node
 	  for (int h = 0; h < 2; h++) {
-	    int t = tFront, tStart = tFront;
-	    int ind = i;
+	    int t = tFront; // current position in DipTree
+	    int ind = i; // index into stored DipTree nodes at t
+	    int tStart = tFront; // start of last copied haplotype segment (for now, set to tFront)
 
-	    // set ret[s].haps[h].tMask{Fwd,Rev}
+	    // set ret[s].haps[h].tMask{Fwd,Rev} to use when aligning parental paths to phase calls
 	    computeHetMasks(ret[s].haps[h], nodes, tCallLoc, t, ind, h, isFwd);
-
+	    /*
+	    traceNode(t, i);
+	    cout << "tFront = " << tFront << endl;
+	    cout << "tCallLoc: " << tCallLoc << " tStart: " << tStart << " T: " << T << endl;
+	    */
 	    HapTreeState state; int tBit = 0;
 	    ret[s].haps[h].isEnd = false;
-	    while (tCallLoc < tStart) {
-	      if (tStart==tCallLoc+1) ret[s].haps[h].isEnd = true;
-	      while (t != tStart) // rewind DipTree from t to tStart
+	    // jump backward one copied segment at a time until we get one starting <= tCallLoc
+	    while (tStart > tCallLoc) {
+	      if (tStart == tCallLoc+1) // prev segment ends in (tCallLoc, tCallLoc+1)
+		ret[s].haps[h].isEnd = true;
+	      while (t != tStart) // rewind DipTree from t to tStart (start of last copied segment)
 		ind = nodes[t--][ind].from;
 	      tBit = h==0 ? nodes[t][ind].hapMat : nodes[t][ind].hapPat; // allele at tStart-1
-	      ind = nodes[t--][ind].from; // move t back 1; now tBit is allele at t = tStart-1
+	      ind = nodes[t--][ind].from; // move t back 1; now tBit is allele at t (= tStart-1)
+	      // sample previous segment; output is written to (tStart, state)
 	      hapWaves.sampleLastPrefix(tStart, state, t, nodes[t][ind].hapPathInds[h], tBit);
 	      ret[s].haps[h].tLength = t-tStart;
 	    }
+
 	    const HapTreeMulti &hapTree = hapHedge.getHapTreeMulti(tStart);
 	    assert(hapTree.next(2*t, state, tBit)); // extend state to bit=tBit @ t
 
-	    // randomly sample from this prefix, moving up to 10 hets ahead
+	    // randomly sample an actual haplotype from this prefix, moving up to 10 hets ahead
 	    for (int m = 2*t+1; m < 2*T && m < 2*t+20; m++) {
 	      if (m % 2 == 1) // error bit: extend to 0-err hom region if possible
 		hapTree.nextAtFrac(m, state, 0);
