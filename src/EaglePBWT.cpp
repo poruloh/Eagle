@@ -84,6 +84,26 @@ namespace EAGLE {
     return bestHaps;
   }
 
+  vector <bool> Eagle::computeRefIsMono(const vector <uint> &bestHaps) const {
+    vector <bool> refIsMono(Mseg64*64, true);
+    vector <uint64> anyIs0(Mseg64), anyIs1(Mseg64);
+    for (uint i = 0; i < bestHaps.size(); i++) {
+      uint64 nHap = bestHaps[i];
+      for (uint64 m64 = 0; m64 < Mseg64; m64++) {
+	uint64 is1 = haploBitsT[nHap*Mseg64 + m64];
+	anyIs0[m64] |= ~is1;
+	anyIs1[m64] |= is1;
+      }
+    }
+    for (uint64 m64j = 0; m64j < Mseg64*64; m64j++) {
+      if (maskSnps64j[m64j]) {
+	uint64 m64 = m64j/64, j = m64j&63;
+	refIsMono[m64j] = !((anyIs0[m64]>>j)&1) || !((anyIs1[m64]>>j)&1);
+      }
+    }
+    return refIsMono;
+  }
+
   float Eagle::runPBWT(uint64 n0, uint64 nF1, uint64 nF2, int Kpbwt, float cMexpect,
 		       double histFactor, bool runReverse, bool useTargetHaps, bool impMissing) {
     vector < pair <int, int> > noConPS;
@@ -94,6 +114,8 @@ namespace EAGLE {
   float Eagle::runPBWT(uint64 n0, uint64 nF1, uint64 nF2, int Kpbwt, float cMexpect,
 		       double histFactor, bool runReverse, bool useTargetHaps, bool impMissing,
 		       int usePS, const vector < pair <int, int> > &conPS) {
+    Timer timer;
+    
     vector <uint> m64jInds(Mseg64*64+1);
 
     const int SPEED_FACTOR = 1; const float lnPerr = logf(powf(10.0f, logPerr));
@@ -101,15 +123,29 @@ namespace EAGLE {
 
     bool print = (int) nF1 != -1;
     
+
+    /***** SELECT BEST REFERENCE HAPLOTYPES *****/
+
+    if (print) cout << "selecting " << Kpbwt << " ref haps...    " << std::flush;
+    vector <uint> bestHaps = findMinErrDipHap(n0, Kpbwt, useTargetHaps);
+    // find sites at which only one allele is represented in bestHaps => can't be used as split
+    vector <bool> refIsMono = computeRefIsMono(bestHaps); // size = Mseg64*64
+    if (print) cout << " done " << timer.update_time() << endl;
+
+
     /***** PROCESS TARGET GENOTYPES *****/
     
     // create vectors of genos, genoBits, and hets
     vector <uchar> genos64j(Mseg64*64);
-    vector <uint64> hets64j;
+    vector <uint64> hets64j, refMonoHets64j;
     for (uint64 m64j = 0; m64j < Mseg64*64; m64j++) {
       genos64j[m64j] = getGeno0123(m64j, n0);
-      if (maskSnps64j[m64j] && genos64j[m64j]==1)
-	hets64j.push_back(m64j);
+      if (maskSnps64j[m64j] && genos64j[m64j]==1) {
+	if (!refIsMono[m64j])
+	  hets64j.push_back(m64j);
+	else
+	  refMonoHets64j.push_back(m64j);
+      }
     }
     vector <uint64_masks> tgtGenoBits(Mseg64);
     for (uint64 m64 = 0; m64 < Mseg64; m64++)
@@ -121,37 +157,50 @@ namespace EAGLE {
     // find split sites (for PBWT HapTree starts): hets and occasionally inter-het sites
     vector < pair <int, int> > tCallLocs; vector <int> tHomLocs;
     vector <uint64> splits64j;
-    if (!hets64j.empty())
-      splits64j.push_back(hets64j[0]);
     const double cMmaxSplit = 0.5;
-    for (uint64 h = 1; h < hets64j.size(); h++) {
-      int lastCallLoc = splits64j.size(); // old het ind + 1
+    if (!hets64j.empty()) {
+      splits64j.push_back(hets64j[0]);
+      for (uint64 h = 1; h < hets64j.size(); h++) {
+	int lastCallLoc = splits64j.size(); // old het ind + 1: tree indices are split indices + 1
 
-      for (uint64 m64j = hets64j[h-1]+1; m64j <= hets64j[h]; m64j++)
-	if (maskSnps64j[m64j] && genos64j[m64j] <= 2)
-	  if (m64j == hets64j[h] || cMs64j[m64j] > cMs64j[splits64j.back()] + cMmaxSplit) {
-	    splits64j.push_back(m64j);
-	    if (m64j < hets64j[h])
-	      tHomLocs.push_back(splits64j.size()); // hom ind + 1
-	  }
-      int nextCallLoc = splits64j.size(); // new het ind + 1
-      tCallLocs.push_back(make_pair(lastCallLoc, nextCallLoc));
+	for (uint64 m64j = hets64j[h-1]+1; m64j <= hets64j[h]; m64j++)
+	  if (maskSnps64j[m64j] && !refIsMono[m64j] && genos64j[m64j] <= 2)
+	    if (m64j == hets64j[h] || cMs64j[m64j] > cMs64j[splits64j.back()] + cMmaxSplit) {
+	      splits64j.push_back(m64j);
+	      if (m64j < hets64j[h])
+		tHomLocs.push_back(splits64j.size()); // hom ind + 1
+	    }
+	int nextCallLoc = splits64j.size(); // new het ind + 1
+	tCallLocs.push_back(make_pair(lastCallLoc, nextCallLoc));
+      }
     }
-    if (print)
-      cout << "num hets: " << hets64j.size() << " num splits: " << splits64j.size() << endl;
+    else { // all hom or missing or mono in ref; put in splits as necessary
+      for (uint64 m64j = 0; m64j < Mseg64*64; m64j++)
+	if (maskSnps64j[m64j] && !refIsMono[m64j] && genos64j[m64j] <= 2)
+	  if (splits64j.empty() || cMs64j[m64j] > cMs64j[splits64j.back()] + cMmaxSplit) {
+	    splits64j.push_back(m64j);
+	    tHomLocs.push_back(splits64j.size()); // hom ind + 1
+	  }
+    }
+    if (print) {
+      cout << "num hets (poly in best haps): " << hets64j.size();
+      cout << " num hets (mono in best haps): " << refMonoHets64j.size();
+      cout << " num splits: " << splits64j.size() << endl;
+    }
     
-    // allocate storage for reference haplotype samples (to use if impMissing==true)
+    // allocate storage for reference haplotype samples (to use for impMissing and singleton hets)
     const int samples = 10;
     vector < vector <HapPair> > refSamples[2];
     refSamples[0].resize(splits64j.size()+1);
     refSamples[1].resize(splits64j.size()+1);
     // store which inter-split chunks contain at least one missing site
-    vector <bool> tHasMissing(splits64j.size()+1);
+    vector <bool> tHasMissing(splits64j.size()+1); // "missing" = missing or singleton het
     for (int t = 0; t <= (int) splits64j.size(); t++) {
       uint64 m64jPrev = t==0 ? -1ULL : splits64j[t-1];
       uint64 m64jNext = t==(int) splits64j.size() ? Mseg64*64 : splits64j[t];
       for (uint64 m64j = m64jPrev+1; m64j < m64jNext; m64j++)
-	if (genos64j[m64j] == 3) // missing
+	if (maskSnps64j[m64j] && ((genos64j[m64j] == 3 && impMissing) || // missing
+				  (genos64j[m64j] == 1 && refIsMono[m64j]))) // singleton het
 	  tHasMissing[t] = true;
     }
 
@@ -162,12 +211,11 @@ namespace EAGLE {
       splitGenos.push_back(genos64j[splits64j[s]]);
     splitGenos.push_back(0); // pad on right with 0 (to match hapBitsT)
 
-    // check for 0 or 1 het (no need to phase)
+    // check for 0 or 1 het (warn)
     if (hets64j.size() <= 1) {
-      cerr << "WARNING: Sample " << n0-Nref << " has a het count of " << hets64j.size() << endl;
-      impMissing = false;
+      cerr << "WARNING: Sample " << n0-Nref+1 << " (1-indexed) has a het count of "
+	   << hets64j.size() << endl;
     }
-    else {
 
     // compute recombination probabilities
     vector <float> cMcoords(splits64j.size()+2);
@@ -181,14 +229,7 @@ namespace EAGLE {
 	  homs++;
     }
 
-    Timer timer;
-    
     /**** BUILD PBWT DATA STRUCTURE *****/
-
-    // select top ref haps
-    if (print) cout << "selecting " << Kpbwt << " ref haps...    " << std::flush;
-    vector <uint> bestHaps = findMinErrDipHap(n0, Kpbwt, useTargetHaps);
-    if (print) cout << " done " << timer.update_time() << endl;
 
     // create HapBitsT encoding of ref hets and hom errs
     if (print) cout << "making HapBitsT...             " << std::flush;
@@ -200,6 +241,7 @@ namespace EAGLE {
     HapHedgeErr *hapHedgePtr = new HapHedgeErr(hapBitsT);
     if (print) cout << " done " << timer.update_time() << endl;
 
+    //hapHedgePtr->printTree(0);
 
     /***** RUN COARSE (UNCONSTRAINED) DIPTREE SEARCH *****/
 
@@ -208,7 +250,7 @@ namespace EAGLE {
     vector <char> constraints(splitGenos.size(), NO_CONSTRAINT);
     vector <int> splitInds(Mseg64*64+1); // index map for FORMAT:PS constraints
     if (usePS) {
-      // populate splitInds: 1-based indices t=1..T-1 in splits64j[t-1] of 1-based SNPs m+1
+      // populate splitInds: 1-based indices t=1..T-2 in splits64j[t-1] of 1-based SNPs m+1
       for (uint64 m64j = 0, m = 0, t = 0; m64j < Mseg64*64; m64j++)
 	if (maskSnps64j[m64j]) {
 	  m++;
@@ -257,7 +299,7 @@ namespace EAGLE {
       }
       probInds.push_back(probInd);
     }
-    int T = splitGenos.size(); // splits64j.size()+2
+    int T = splitGenos.size(); // splits64j.size()+2; tree indices are split indices + 1
     vector <char> revConstraints(T, NO_CONSTRAINT);
     // set relative phase constraints for most confident hets
     std::sort(probInds.begin(), probInds.end());
@@ -313,10 +355,9 @@ namespace EAGLE {
     const int callLengthSample = 20;
 
     // sample refs (BEFORE callProbAA: sampleRefs needs recent history that gets overwritten)
-    if (impMissing)
-      for (int t = 0; t < T-1; t++)
-	if (tHasMissing[t])
-	  refSamples[0][t] = dipTreeFine.sampleRefs(t, callLengthSample, samples, bestHaps, true);
+    for (int t = 0; t < T-1; t++)
+      if (tHasMissing[t])
+	refSamples[0][t] = dipTreeFine.sampleRefs(t, callLengthSample, samples, bestHaps, true);
 
     vector <float> probAAsCur;
     lastBit = 0;
@@ -362,11 +403,10 @@ namespace EAGLE {
       if (print) cout << "making rev phase calls (con)..." << std::flush;
 
       // sample refs (BEFORE callProbAA: sampleRefs needs recent history that gets overwritten)
-      if (impMissing)
-	for (int t = T-2; t >= 0; t--)
-	  if (tHasMissing[t])
-	    refSamples[1][t] =
-	      revDipTreeFine.sampleRefs(T-2-t, callLengthSample, samples, bestHaps, false);
+      for (int t = T-2; t >= 0; t--)
+	if (tHasMissing[t])
+	  refSamples[1][t] =
+	    revDipTreeFine.sampleRefs(T-2-t, callLengthSample, samples, bestHaps, false);
 
       vector <uint64> revPbwtBitsFine(Mseg64);
       lastBit = 0;
@@ -446,8 +486,6 @@ namespace EAGLE {
       }
     }
 
-    }
-
     // write phase calls
     uint64 nTargetHap = 2*(n0-Nref);
     uint64 nTargetOpp = 2*(n0-Nref) + 1;
@@ -473,28 +511,28 @@ namespace EAGLE {
       }
     }
 
-    // impute missing genos
-    if (impMissing) {
-      for (int t = 0; t <= (int) splits64j.size(); t++) {
-	if (!tHasMissing[t]) continue;
+    // impute missing genos and phase hets monomorphic in bestHaps
+    for (int t = 0; t <= (int) splits64j.size(); t++) {
+      if (!tHasMissing[t]) continue;
 
-	if (!runReverse) {
-	  // no reverse samples available; just use fwd samples and don't bother with ends
-	  for (int s = 0; s < samples; s++)
-	    for (int h = 0; h < 2; h++)
-	      refSamples[0][t][s].haps[h].isEnd = false;
-	  refSamples[1][t] = refSamples[0][t];
-	}
+      if (!runReverse) {
+	// no reverse samples available; just use fwd samples and don't bother with ends
+	for (int s = 0; s < samples; s++)
+	  for (int h = 0; h < 2; h++)
+	    refSamples[0][t][s].haps[h].isEnd = false;
+	refSamples[1][t] = refSamples[0][t];
+      }
 	
-	// identify missing sites
-	uint64 m64jPrev = t==0 ? -1ULL : splits64j[t-1];
-	uint64 m64jNext = t==(int) splits64j.size() ? Mseg64*64 : splits64j[t];
-	vector <uint64> miss64j;
-	for (uint64 m64j = m64jPrev+1; m64j < m64jNext; m64j++)
-	  if (genos64j[m64j] == 3) // missing
-	    miss64j.push_back(m64j);
+      // identify missing sites
+      const uint64 m64jPrev = t==0 ? -1ULL : splits64j[t-1];
+      const uint64 m64jNext = t==(int) splits64j.size() ? Mseg64*64 : splits64j[t];
+      vector <uint64> miss64j;
+      for (uint64 m64j = m64jPrev+1; m64j < m64jNext; m64j++)
+	if (genos64j[m64j] == 3 && impMissing) // missing
+	  miss64j.push_back(m64j);
 
-	// orient each hap pair wrt called phase
+      // orient each hap pair wrt called phase
+      if (!hets64j.empty())
 	for (int fb = 0; fb < 2; fb++) {
 	  for (int s = 0; s < samples; s++) {
 	    double cMmid;
@@ -525,147 +563,168 @@ namespace EAGLE {
 	  }
 	}
 
-	// for each haplotype in turn, call missing sites 
-	for (int h = 0; h < 2; h++) {
-	  vector <int> endRefs[2];
-	  vector <int> nonEndRefs[2], nonEndLens[2];
-	  // split sampled haplotypes into buckets: those that end in (t,t+1) and those that don't
-	  for (int fb = 0; fb < 2; fb++)
-	    for (int s = 0; s < samples; s++) {
-	      if (refSamples[fb][t][s].haps[h].isEnd)
-		endRefs[fb].push_back(refSamples[fb][t][s].haps[h].refSeq);
-	      else {
-		nonEndRefs[fb].push_back(refSamples[fb][t][s].haps[h].refSeq);
-		nonEndLens[fb].push_back(refSamples[fb][t][s].haps[h].tLength);
-	      }
+      // for each haplotype in turn, call missing sites (and save mean hap length)
+      double hMeanLens[2];
+      for (int h = 0; h < 2; h++) {
+	vector <int> endRefs[2];
+	vector <int> nonEndRefs[2], nonEndLens[2];
+	// split sampled haplotypes into buckets: those that end in (t,t+1) and those that don't
+	for (int fb = 0; fb < 2; fb++)
+	  for (int s = 0; s < samples; s++) {
+	    if (refSamples[fb][t][s].haps[h].isEnd)
+	      endRefs[fb].push_back(refSamples[fb][t][s].haps[h].refSeq);
+	    else {
+	      nonEndRefs[fb].push_back(refSamples[fb][t][s].haps[h].refSeq);
+	      nonEndLens[fb].push_back(refSamples[fb][t][s].haps[h].tLength);
 	    }
-
-	  // initialize allele dosages
-	  int nMiss = miss64j.size();
-	  double alleleDoses[nMiss][2];
-	  for (int m = 0; m < nMiss; m++) alleleDoses[m][0] = alleleDoses[m][1] = 0;
-
-	  // process non-ends: call using longer of fwd, rev ref samples
-	  double meanLens[2] = {0, 0};
-	  for (int fb = 0; fb < 2; fb++)
-	    if (!nonEndLens[fb].empty())
-	      meanLens[fb] = std::accumulate(nonEndLens[fb].begin(), nonEndLens[fb].end(), 0) /
-		(double) nonEndLens[fb].size();
-	  int fbLong = meanLens[0] > meanLens[1] ? 0 : 1;
-	  for (uint k = 0; k < nonEndRefs[fbLong].size(); k++) {
-	    int refSeq = nonEndRefs[fbLong][k];
-	    for (int m = 0; m < nMiss; m++)
-	      alleleDoses[m][(haploBitsT[refSeq*Mseg64+miss64j[m]/64]>>(miss64j[m]&63))&1] += 1;
 	  }
 
-	  // process ends: find most likely recombination points at which fwd and rev haps meet
-	  if (!endRefs[0].empty() && !endRefs[1].empty()) {
-	    for (uint k = 0; k < endRefs[0].size() && k < endRefs[1].size(); k++) {
-	      int refSeqFwd = endRefs[0][k], refSeqRev = endRefs[1][k];
-	      int errFwd = 0, errRev = 0;
-	      for (uint64 m64j = m64jPrev+1; m64j < m64jNext; m64j++) {
+	// initialize allele dosages
+	int nMiss = miss64j.size();
+	double alleleDoses[nMiss][2];
+	for (int m = 0; m < nMiss; m++) alleleDoses[m][0] = alleleDoses[m][1] = 0;
+
+	// process non-ends: call using longer of fwd, rev ref samples
+	double meanLens[2] = {0, 0};
+	for (int fb = 0; fb < 2; fb++)
+	  if (!nonEndLens[fb].empty())
+	    meanLens[fb] = std::accumulate(nonEndLens[fb].begin(), nonEndLens[fb].end(), 0) /
+	      (double) nonEndLens[fb].size();
+	int fbLong = meanLens[0] > meanLens[1] ? 0 : 1;
+	for (uint k = 0; k < nonEndRefs[fbLong].size(); k++) {
+	  int refSeq = nonEndRefs[fbLong][k];
+	  for (int m = 0; m < nMiss; m++)
+	    alleleDoses[m][(haploBitsT[refSeq*Mseg64+miss64j[m]/64]>>(miss64j[m]&63))&1] += 1;
+	}
+	  
+	// compute mean lengths including ends=0 for phasing singletons later
+	for (int fb = 0; fb < 2; fb++)
+	  meanLens[fb] = std::accumulate(nonEndLens[fb].begin(), nonEndLens[fb].end(), 0) /
+	    (double) samples;
+	hMeanLens[h] = std::max(meanLens[0], meanLens[1]); // set to max of fwd, rev
+
+	// process ends: find most likely recombination points at which fwd and rev haps meet
+	if (!endRefs[0].empty() && !endRefs[1].empty()) {
+	  for (uint k = 0; k < endRefs[0].size() && k < endRefs[1].size(); k++) {
+	    int refSeqFwd = endRefs[0][k], refSeqRev = endRefs[1][k];
+	    int errFwd = 0, errRev = 0;
+	    for (uint64 m64j = m64jPrev+1; m64j < m64jNext; m64j++) {
+	      if ((genos64j[m64j] == 0 || genos64j[m64j] == 2) &&
+		  (((haploBitsT[refSeqRev*Mseg64+m64j/64]>>(m64j&63))&1) != genos64j[m64j]/2))
+		errRev++;
+	    }
+	      
+	    // find recombination points that minimize errors (usually 0 errors)
+	    int minErr = 1<<30;
+	    vector <double> cMdiffs; vector <uint64> revStarts;
+
+	    for (uint64 m64j = m64jPrev; m64j < m64jNext; m64j++) {
+	      if (m64j != m64jPrev) { // update err counts
+		if ((genos64j[m64j] == 0 || genos64j[m64j] == 2) &&
+		    (((haploBitsT[refSeqFwd*Mseg64+m64j/64]>>(m64j&63))&1) != genos64j[m64j]/2))
+		  errFwd++;
 		if ((genos64j[m64j] == 0 || genos64j[m64j] == 2) &&
 		    (((haploBitsT[refSeqRev*Mseg64+m64j/64]>>(m64j&63))&1) != genos64j[m64j]/2))
-		  errRev++;
+		  errRev--;
 	      }
-	      
-	      // find recombination points that minimize errors (usually 0 errors)
-	      int minErr = 1000;
-	      vector <double> cMdiffs; vector <uint64> revStarts;
-
-	      for (uint64 m64j = m64jPrev; m64j < m64jNext; m64j++) {
-		if (m64j != m64jPrev) { // update err counts
-		  if ((genos64j[m64j] == 0 || genos64j[m64j] == 2) &&
-		      (((haploBitsT[refSeqFwd*Mseg64+m64j/64]>>(m64j&63))&1) != genos64j[m64j]/2))
-		    errFwd++;
-		  if ((genos64j[m64j] == 0 || genos64j[m64j] == 2) &&
-		      (((haploBitsT[refSeqRev*Mseg64+m64j/64]>>(m64j&63))&1) != genos64j[m64j]/2))
-		    errRev--;
-		}
 		
-		// rev starts at m64j+1
-		double cMdiff = cMs64j[m64j+1] - (m64j==-1ULL ? 0 : cMs64j[m64j]) + 1e-9;
+	      // rev starts at m64j+1
+	      double cMdiff = cMs64j[m64j+1] - (m64j==-1ULL ? 0 : cMs64j[m64j]) + 1e-9;
 
-		if (errFwd+errRev < minErr) {
-		  minErr = errFwd+errRev;
-		  cMdiffs.clear();
-		  revStarts.clear();
-		}
-		if (errFwd+errRev == minErr) {
-		  cMdiffs.push_back(cMdiff);
-		  revStarts.push_back(m64j+1);
-		}
+	      if (errFwd+errRev < minErr) {
+		minErr = errFwd+errRev;
+		cMdiffs.clear();
+		revStarts.clear();
 	      }
-	      /*
-	      if (minErr) {
-		cout << "minErr: " << minErr;
-		for (uint x = 0; x < cMdiffs.size(); x++)
-		  printf("  %.3f @ %d", cMdiffs[x], (int) revStarts[x]);
-		cout << endl;
-	      }
-	      */
-	      // augment dosages proportionally to cMdiffs (btwn consecutive SNPs) at recomb points
-	      double cMtot = std::accumulate(cMdiffs.begin(), cMdiffs.end(), 0.0);
-	      for (int m = 0; m < nMiss; m++) {
-		double cMcum = 0;
-		for (uint x = 0; x < revStarts.size(); x++) {
-		  if (miss64j[m] < revStarts[x])
-		    cMcum += cMdiffs[x];
-		  else
-		    break;
-		}
-		alleleDoses[m][(haploBitsT[refSeqFwd*Mseg64+miss64j[m]/64]>>(miss64j[m]&63))&1] +=
-		  cMcum / cMtot;
-		alleleDoses[m][(haploBitsT[refSeqRev*Mseg64+miss64j[m]/64]>>(miss64j[m]&63))&1] +=
-		  1 - cMcum / cMtot;
+	      if (errFwd+errRev == minErr) {
+		cMdiffs.push_back(cMdiff);
+		revStarts.push_back(m64j+1);
 	      }
 	    }
-	  }
 
-	  // make final calls
-	  for (int m = 0; m < nMiss; m++) {
-	    uint64 m64 = miss64j[m]/64, j = miss64j[m]&63;
-	    if (alleleDoses[m][0] > alleleDoses[m][1])
-	      tmpHaploBitsT[(nTargetHap+h)*Mseg64 + m64] &= ~(1ULL<<j);
-	    else
-	      tmpHaploBitsT[(nTargetHap+h)*Mseg64 + m64] |= 1ULL<<j;
-	  }
-	}
-      }
-      /*
-      for (int t = 0; t < 500; t += 100) {
-	cout << "==== t: " << t << " ====" << endl;
-	for (int fb = 0; fb < 2; fb++) {
-	  cout << "--- fb: " << fb << " ---" << endl;
-	  for (int s = 0; s < 3; s++) {
-	    cout << ".. sample: " << s << " ..     " << refSamples[fb][t][s].haps[0].tLength << "," << refSamples[fb][t][s].haps[1].tLength << endl;
-	    for (int h = 0; h < 2; h++) {
-	      for (int i = 15; i >= 0; i--) {
-		if ((((refSamples[fb][t][s].haps[h].tMaskRev ^ refSamples[fb][t][s].haps[1-h].tMaskRev)>>i)&1) && splitGenos[t-i]==1) {
-		  uint64 m64j = splits64j[t-i-1];
-		  cout << (((refSamples[fb][t][s].haps[h].tMaskRev>>i)&1) == ((pbwtBitsFine[m64j/64]>>(m64j&63))&1) ? "+" : "-");
-		}
+	    // augment dosages proportionally to cMdiffs (btwn consecutive SNPs) at recomb points
+	    double cMtot = std::accumulate(cMdiffs.begin(), cMdiffs.end(), 0.0);
+	    for (int m = 0; m < nMiss; m++) {
+	      double cMcum = 0;
+	      for (uint x = 0; x < revStarts.size(); x++) {
+		if (miss64j[m] < revStarts[x])
+		  cMcum += cMdiffs[x];
 		else
-		  cout << ".";
+		  break;
 	      }
-	      cout << "|";
-	      for (int i = 0; i < 16; i++) {
-		if ((((refSamples[fb][t][s].haps[h].tMaskFwd ^ refSamples[fb][t][s].haps[1-h].tMaskFwd)>>i)&1) && splitGenos[t+i+1]==1) {
-		  uint64 m64j = splits64j[t+i];
-		  cout << (((refSamples[fb][t][s].haps[h].tMaskFwd>>i)&1) == ((pbwtBitsFine[m64j/64]>>(m64j&63))&1) ? "+" : "-");
-
-		}
-		else
-		  cout << ".";
-	      }
-	      cout << "   ";
+	      alleleDoses[m][(haploBitsT[refSeqFwd*Mseg64+miss64j[m]/64]>>(miss64j[m]&63))&1] +=
+		cMcum / cMtot;
+	      alleleDoses[m][(haploBitsT[refSeqRev*Mseg64+miss64j[m]/64]>>(miss64j[m]&63))&1] +=
+		1 - cMcum / cMtot;
 	    }
-	    cout << endl;
 	  }
 	}
+
+	// make final calls
+	for (int m = 0; m < nMiss; m++) {
+	  uint64 m64 = miss64j[m]/64, j = miss64j[m]&63;
+	  if (alleleDoses[m][0] >= alleleDoses[m][1])
+	    tmpHaploBitsT[(nTargetHap+h)*Mseg64 + m64] &= ~(1ULL<<j);
+	  else
+	    tmpHaploBitsT[(nTargetHap+h)*Mseg64 + m64] |= 1ULL<<j;
+	}
       }
-      */
+
+      // call phase at "singleton" hets monomorphic among bestHaps
+      for (uint64 m64j = m64jPrev+1; m64j < m64jNext; m64j++)
+	if (genos64j[m64j] == 1 && refIsMono[m64j]) { // "singleton" het
+	  uint64 m64 = m64j/64, j = m64j&63;
+	  uint64 commonBit = haploBitsT[bestHaps[0]*Mseg64 + m64] & (1ULL<<j);
+	  uint64 rareBit = commonBit ^ (1ULL<<j);
+
+	  int hShorter = hMeanLens[0] < hMeanLens[1] ? 0 : 1; // put rare allele on shorter hap
+
+	  for (int h = 0; h < 2; h++)
+	    tmpHaploBitsT[(nTargetHap+h)*Mseg64 + m64] &= ~(1ULL<<j); // clear bit	    
+	  tmpHaploBitsT[(nTargetHap+hShorter)*Mseg64 + m64] |= rareBit;
+	  tmpHaploBitsT[(nTargetHap+!hShorter)*Mseg64 + m64] |= commonBit;
+	  /*
+	  cout << "common bit: " << commonBit << endl;
+	  cout << "rare bit: " << rareBit << endl;
+	  cout << "hMeanLens[0]: " << hMeanLens[0] << endl;
+	  cout << "hMeanLens[1]: " << hMeanLens[1] << endl;
+	  cout << "hShorter: " << hShorter << endl;
+	  */
+	}
     }
+    /*
+    for (int t = 0; t < 500; t += 100) {
+      cout << "==== t: " << t << " ====" << endl;
+      for (int fb = 0; fb < 2; fb++) {
+	cout << "--- fb: " << fb << " ---" << endl;
+	for (int s = 0; s < 3; s++) {
+	  cout << ".. sample: " << s << " ..     " << refSamples[fb][t][s].haps[0].tLength << "," << refSamples[fb][t][s].haps[1].tLength << endl;
+	  for (int h = 0; h < 2; h++) {
+	    for (int i = 15; i >= 0; i--) {
+	      if ((((refSamples[fb][t][s].haps[h].tMaskRev ^ refSamples[fb][t][s].haps[1-h].tMaskRev)>>i)&1) && splitGenos[t-i]==1) {
+		uint64 m64j = splits64j[t-i-1];
+		cout << (((refSamples[fb][t][s].haps[h].tMaskRev>>i)&1) == ((pbwtBitsFine[m64j/64]>>(m64j&63))&1) ? "+" : "-");
+	      }
+	      else
+		cout << ".";
+	    }
+	    cout << "|";
+	    for (int i = 0; i < 16; i++) {
+	      if ((((refSamples[fb][t][s].haps[h].tMaskFwd ^ refSamples[fb][t][s].haps[1-h].tMaskFwd)>>i)&1) && splitGenos[t+i+1]==1) {
+		uint64 m64j = splits64j[t+i];
+		cout << (((refSamples[fb][t][s].haps[h].tMaskFwd>>i)&1) == ((pbwtBitsFine[m64j/64]>>(m64j&63))&1) ? "+" : "-");
+
+	      }
+	      else
+		cout << ".";
+	    }
+	    cout << "   ";
+	  }
+	  cout << endl;
+	}
+      }
+    }
+    */
 
     if (print && usePS) {
       int correct = 0;

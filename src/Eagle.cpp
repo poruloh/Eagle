@@ -78,7 +78,7 @@ namespace EAGLE {
     return (i * 0x101010101010101) >> 56;
   }
 
-  void Eagle::init(void) {
+  void Eagle::init() {
     totTicks = 0; extTicks = 0; diphapTicks = 0; lshTicks = 0; lshCheckTicks = 0;
     dpTicks = 0; dpStaticTicks = 0; dpSwitchTicks = 0; dpUpdateTicks = 0; dpSortTicks = 0;
     dpUpdateCalls = 0; blipFixTicks = 0; blipPopTicks = 0; blipVoteTicks = 0; blipLshTicks = 0;
@@ -98,13 +98,6 @@ namespace EAGLE {
     }
     cMs64j[Mseg64*64] = cMlast;
     
-    if (Nref == 0) { // don't allocate in ref-mode
-      phaseConfs = ALIGNED_MALLOC_UCHARS(2*N*Mseg64*64);
-      phaseConfs2 = ALIGNED_MALLOC_UCHARS(2*N*Mseg64*64);
-    }
-    else {
-      phaseConfs = phaseConfs2 = NULL;
-    }
     haploBits = ALIGNED_MALLOC_UINT64S(Mseg64*2*N);
     haploBitsT = ALIGNED_MALLOC_UINT64S(2*N*Mseg64);
     segConfs = ALIGNED_MALLOC_UCHARS(2*N*Mseg64);
@@ -135,14 +128,23 @@ namespace EAGLE {
 	       vector < vector <double> > _seg64cMvecs, const AlleleFreqs *_seg64logPs,
 	       vector <double> _invLD64j, const vector <IndivInfoX> &_indivs,
 	       const vector <SnpInfoX> &_snps, const string &maskFile,
-	       const vector <bool> &_isFlipped64j, double _pErr) :
+	       const vector <bool> &_isFlipped64j, double _pErr, int runStep2) :
     N(_N), Nref(0), Mseg64(_Mseg64), genoBits(_genoBits), seg64cMvecs(_seg64cMvecs),
     seg64logPs(_seg64logPs), invLD64j(_invLD64j), indivs(_indivs), snps(_snps),
     isFlipped64j(_isFlipped64j), logPerr(log10(_pErr)) {
 
     init();
     
-    tmpHaploBitsT = NULL;
+    if (runStep2) {
+      phaseConfs = ALIGNED_MALLOC_UCHARS(2*N*Mseg64*64);
+      phaseConfs2 = ALIGNED_MALLOC_UCHARS(2*N*Mseg64*64);
+      tmpHaploBitsT = NULL;
+    }
+    else {
+      phaseConfs = phaseConfs2 = NULL;
+      tmpHaploBitsT = ALIGNED_MALLOC_UINT64S(2*N*Mseg64);
+      memset(tmpHaploBitsT, 0, 2*N*Mseg64*sizeof(tmpHaploBitsT[0]));
+    }
 
     if (!maskFile.empty()) {
       int masked = 0;
@@ -166,6 +168,7 @@ namespace EAGLE {
     init();
     isFlipped64j = vector <bool> (Mseg64*64); // no flipping in ref mode
     
+    phaseConfs = phaseConfs2 = NULL;
     tmpHaploBitsT = ALIGNED_MALLOC_UINT64S(2*(N-Nref)*Mseg64);
 
     memset(segConfs, 0, 2*N*Mseg64*sizeof(segConfs[0]));
@@ -530,6 +533,13 @@ namespace EAGLE {
 	memset(&isIBDx2[IBDx2regions[r].first], 0, IBDx2regions[r].second-IBDx2regions[r].first);
     }
 
+    // fast rng: last 16 bits of Marsaglia's MWC
+    uint w = 521288629;
+    if (phaseConfs != NULL) { // need to make hard calls here
+      for (uint i = 0; i < (n0 & 0xff); i++)
+	w=18000*(w&65535)+(w>>16);
+    }
+
     for (uint64 m64j = 0; m64j < Mseg64*64; m64j++) {
       if (maskSnps64j[m64j]) {
 	for (uint64 q = 0; q <= 1; q++) {
@@ -543,11 +553,18 @@ namespace EAGLE {
 			    * votes[q][m64j]);
 	    phaseConf = OR / (1 + OR);
 	  }
-	  phaseConfs[(2*n0+q)*Mseg64*64 + m64j] = (uchar) (phaseConf * 255);
+	  if (phaseConfs != NULL)
+	    phaseConfs[(2*n0+q)*Mseg64*64 + m64j] = (uchar) (phaseConf * 255);
+	  else {
+	    uchar uPhaseConf = (uchar) (phaseConf * 255);
+	    if (uPhaseConf == (uchar) 255 || ((w=18000*(w&65535)+(w>>16))&255) < uPhaseConf)
+	      tmpHaploBitsT[(2*n0+q)*Mseg64 + (m64j/64)] |= 1ULL<<(m64j&63);
+	  }
 	}
       }
       else {
-	phaseConfs[2*n0*Mseg64*64 + m64j] = phaseConfs[(2*n0+1)*Mseg64*64 + m64j] = 0;
+	if (phaseConfs != NULL)
+	  phaseConfs[2*n0*Mseg64*64 + m64j] = phaseConfs[(2*n0+1)*Mseg64*64 + m64j] = 0;
       }
     }
   }

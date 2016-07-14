@@ -251,10 +251,20 @@ int main(int argc, char *argv[]) {
 		     params.cMmax);
 
   vector <double> invLD64j = genoData.computeInvLD64j(1000);
+  
+  // decide whether or not to run Step 2 based on SNP density
+  if (!params.usePBWT) params.runStep2 = 1;
+  if (params.runStep2 != 0 && params.runStep2 != 1) {
+    int bpSpan = genoData.getSnps().back().physpos - genoData.getSnps()[0].physpos;
+    double snpsPerMb = genoData.getSnps().size() / (bpSpan*1e-6);
+    params.runStep2 = snpsPerMb <= 1000;
+    if (genoData.getMseg64() < 3U) params.runStep2 = 0; // can't run Step 2 with < 3 SNP segments
+  }
 
   Eagle eagle(genoData.getN(), genoData.getMseg64(), genoData.getGenoBits(),
 	      genoData.getSeg64cMvecs(), genoData.getSeg64logPs(), invLD64j, genoData.getIndivs(),
-	      genoData.getSnps(), params.maskFile, genoData.getIsFlipped64j(), params.pErr);
+	      genoData.getSnps(), params.maskFile, genoData.getIsFlipped64j(), params.pErr,
+	      params.runStep2);
   
   map <string, pair <string, string> > trioIIDs;
   vector <uint> children, nF1s, nF2s;
@@ -316,13 +326,18 @@ int main(int argc, char *argv[]) {
     cout << "Time for step 1 MN^2: " << timeMN2 / params.numThreads << endl;
     eagle.outputSE(children, nF1s, nF2s, 1);
 
-    cout << endl << "Making hard calls" << flush; timer.update_time();
-    eagle.makeHardCalls(0, N, params.seed);
-    cout << " (time: " << timer.update_time() << ")" << endl << endl;
+    if (params.runStep2) { // running step 2 => Step 1 phase confs were saved to phaseConfs
+      cout << endl << "Making hard calls" << flush; timer.update_time();
+      eagle.makeHardCalls(0, N, params.seed);
+      cout << " (time: " << timer.update_time() << ")" << endl << endl;
+    }
+    else { // not running Step 2 => Step 1 phase calls were saved to tmpHaploBitsT
+      eagle.cpTmpHaploBitsT(0, N);
+    }
 
     /***** RUN STEPS 2-4 (STEP 4 = STEP 3a in paper) *****/
 
-    for (int step = 2; step <= (params.usePBWT ? 2 : 4); step++) {
+    for (int step = 2; step <= (params.usePBWT ? (1+params.runStep2) : 4); step++) {
       cout << endl << "BEGINNING STEP " << step << endl << endl;
       double t23 = timer.get_time(); timer.update_time(); timeMN2 = 0;
 
@@ -367,8 +382,12 @@ int main(int argc, char *argv[]) {
     }
 
     if (params.usePBWT) { // run PBWT iters
+      if (!params.runStep2) // didn't run Step 2 => didn't allocate phaseConfs
+	cout << endl << "SKIPPED STEP 2" << endl;
+      else // ran Step 2 => allocated phaseConfs; didn't allocate tmpHaploBitsT
+	eagle.reallocLRPtoPBWT();
+
       cout << endl << endl << "BEGINNING STEP 3 (PBWT ITERS)" << endl << endl;
-      eagle.reallocLRPtoPBWT();
       int iters = params.pbwtIters;
       if (iters == 0) {
 	iters = 2;
