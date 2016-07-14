@@ -433,6 +433,16 @@ namespace EAGLE {
       }
     }
   }
+  // for debugging
+  void HapTreeMulti::dfsPrint(string curPrefix, int m, int M, const HapTreeState &state) const {
+    if (m > M) return;
+    cout << "m = " << m << ", prefix = " << curPrefix << ": count = " << state.count << endl;
+    for (int b = 0; b < 2; b++) {
+      HapTreeState nextState = state;
+      if (next(m, nextState, b))
+	dfsPrint(curPrefix + (char) ('0'+b), m+1, M, nextState);
+    }
+  }
 
   HapHedge::HapHedge(const HapBitsT &_hapBitsT, int _skip/*, const vector <int> &treeStarts*/) :
     hapBitsT(_hapBitsT), skip(_skip), T((hapBitsT.getM()+skip-1) / skip) {
@@ -580,6 +590,10 @@ namespace EAGLE {
   }
   const HapBitsT &HapHedgeErr::getHapBitsT() const {
     return hapBitsT;
+  }
+  // for debugging
+  void HapHedgeErr::printTree(int t) const {
+    treePtrs[t]->dfsPrint("", 2*t, 2*T, treePtrs[t]->getRootState());
   }
 
 }

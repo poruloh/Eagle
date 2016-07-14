@@ -98,6 +98,7 @@ namespace EAGLE {
     HapTreeState getRootState(void) const;
     bool next(int m, HapTreeState &state, int nextBit) const;
     void nextAtFrac(int m, HapTreeState &state, double nextFrac) const;
+    void dfsPrint(std::string curPrefix, int m, int M, const HapTreeState &state) const;
   };
 
   class HapHedge {
@@ -124,6 +125,7 @@ namespace EAGLE {
     const HapTreeMulti &getHapTreeMulti(int t) const;
     int getNumTrees(void) const;
     const HapBitsT &getHapBitsT() const;
+    void printTree(int t) const;
   };
 
 }
