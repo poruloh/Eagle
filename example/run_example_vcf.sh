@@ -1,17 +1,15 @@
 ../eagle \
-    --bfile=EUR_test \
-    --geneticMapFile=USE_BIM \
+    --vcf=EUR_test.vcf.gz \
+    --geneticMapFile=../tables/genetic_map_hg19.txt.gz \
     --chrom=21 \
     --outPrefix=phased \
     --numThreads=4 \
-    2>&1 | tee example.log
+    2>&1 | tee example_vcf.log
 
 ### run eagle without any parameters to list options
 
-### typical options for phasing without a reference:
+### typical options for phasing without a reference in VCF/BCF mode:
 # to import genetic map coordinates: --geneticMapFile=tables/genetic_map_hg##.txt.gz
-# to remove indivs or exclude SNPs: --remove, --exclude
-# to perform QC on missingness:  --maxMissingPerIndiv, --maxMissingPerSnp
 # to select a region to phase: --bpStart, --bpEnd
 
 ### old:

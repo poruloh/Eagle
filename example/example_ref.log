@@ -1,7 +1,7 @@
                       +-----------------------------+
                       |                             |
-                      |   Eagle v2.1                |
-                      |   July 6, 2016              |
+                      |   Eagle v2.2                |
+                      |   July 15, 2016             |
                       |   Po-Ru Loh                 |
                       |                             |
                       +-----------------------------+
@@ -14,7 +14,7 @@ Command line options:
 ../eagle \
     --vcfRef=ref.bcf \
     --vcfTarget=target.vcf.gz \
-    --geneticMapFile=../tables/genetic_map_hg19_example.txt.gz \
+    --geneticMapFile=../tables/genetic_map_hg19.txt.gz \
     --outPrefix=target.phased 
 
 Setting number of threads to 1
@@ -37,7 +37,7 @@ SNPs ignored: 0 SNPs in target but not reference
 Missing rate in target genotypes: 0.00116279
 
 Filling in genetic map coordinates using reference file:
-  ../tables/genetic_map_hg19_example.txt.gz
+  ../tables/genetic_map_hg19.txt.gz
 Physical distance range: 3595565 base pairs
 Genetic distance range:  10.292 cM
 Average # SNPs per cM:   42
@@ -54,15 +54,15 @@ PHASING ITER 1 OF 1
 
 Phasing target samples
 ................................................................................
-Time for phasing iter 1: 0.27639
+Time for phasing iter 1: 0.242276
 Writing vcf.gz output to target.phased.vcf.gz
 [W::vcf_parse] INFO 'AC' is not defined in the header, assuming Type=String
 [W::vcf_parse] INFO 'AN' is not defined in the header, assuming Type=String
 [W::vcf_parse] INFO 'DP' is not defined in the header, assuming Type=String
 [W::vcf_parse] INFO 'AFR_AF' is not defined in the header, assuming Type=String
 [W::vcf_parse] INFO 'EX_TARGET' is not defined in the header, assuming Type=String
-Time for writing output: 0.127273
-Total elapsed time for analysis = 0.70501 sec
+Time for writing output: 0.0188529
+Total elapsed time for analysis = 8.95566 sec
 
 Mean phase confidence of each target individual:
 ID	PHASE_CONFIDENCE
