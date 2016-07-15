@@ -515,6 +515,25 @@ namespace EAGLE {
     return chipLDscores; // reciprocals taken above
   }
 
+  void GenoData::printRange(void) const {
+
+    int physRange = snps.back().physpos - snps[0].physpos;
+    double cMrange = 100*(snps.back().genpos - snps[0].genpos);
+
+    cout << "Physical distance range: " << physRange << " base pairs" << endl;
+    cout << "Genetic distance range:  " << cMrange << " cM" << endl;
+    cout << "Average # SNPs per cM:   " << (int) (M/cMrange+0.5) << endl;
+
+    if (physRange == 0 || cMrange == 0) {
+      cerr << "ERROR: Physical and genetic distance ranges must be positive" << endl;
+      cerr << "       First SNP: chr=" << snps[0].chrom << " pos=" << snps[0].physpos
+	   << " cM=" << 100*snps[0].genpos << endl;
+      cerr << "       Last SNP:  chr=" << snps.back().chrom << " pos=" << snps.back().physpos
+	   << " cM=" << 100*snps.back().genpos << endl;
+      exit(1);
+    }
+  }
+
   /**    
    * reads indiv info from fam file, snp info from bim file
    * allocates memory, reads genotypes, and does QC
@@ -631,12 +650,8 @@ namespace EAGLE {
 	  mafBinCounts[b]++;
     for (int b = 0; b < 6; b++)
       printf("    %2.0f-%2.0f%%: %7d\n", 100*mafBounds6[b], 100*mafBounds6[b+1], mafBinCounts[b]);
-    cout << "Physical distance range: " << snps.back().physpos - snps[0].physpos
-	 << " base pairs" << endl;
-    cout << "Genetic distance range:  " << 100*(snps.back().genpos - snps[0].genpos)
-	 << " cM" << endl;
-    cout << "Average # SNPs per cM:   " << (int) (M/(100*(snps.back().genpos-snps[0].genpos))+0.5)
-	 << endl;
+
+    printRange();
 
     if (cMmax == 0) {
       cMmax = std::min(1.0, std::max(N / 1e5, 0.25));
@@ -745,12 +760,7 @@ namespace EAGLE {
     // don't perform QC; use all samples
     N = NpreQC;
 
-    cout << "Physical distance range: " << snps.back().physpos - snps[0].physpos
-	 << " base pairs" << endl;
-    cout << "Genetic distance range:  " << 100*(snps.back().genpos - snps[0].genpos)
-	 << " cM" << endl;
-    cout << "Average # SNPs per cM:   " << (int) (M/(100*(snps.back().genpos-snps[0].genpos))+0.5)
-	 << endl;
+    printRange();
 
     if (cMmax == 0) {
       cMmax = std::min(1.0, std::max(N / 1e5, 0.25));

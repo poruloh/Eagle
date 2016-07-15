@@ -104,6 +104,8 @@ namespace EAGLE {
     void initVcf(const std::string &vcfFile, const int inputChrom, double bpStart, double bpEnd,
 		 const std::string &geneticMapFile, bool noMapCheck, double cMmax);
 
+    void printRange(void) const;
+
     ~GenoData();
 
     static int plinkChromCode(const std::string &chrom);
