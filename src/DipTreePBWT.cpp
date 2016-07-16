@@ -567,7 +567,20 @@ namespace EAGLE {
 	    }
 
 	    const HapTreeMulti &hapTree = hapHedge.getHapTreeMulti(tStart);
-	    assert(hapTree.next(2*t, state, tBit)); // extend state to bit=tBit @ t
+	    bool tBitExtOK = hapTree.next(2*t, state, tBit); // extend state to bit=tBit @ t
+	    if (!tBitExtOK) {
+	      cerr << "Internal error in sampleRefs(): Could not extend haplotype" << endl;
+	      cerr << "  tStart = " << tStart << endl;
+	      cerr << "  t = " << t << endl;
+	      cerr << "  tCallLoc = " << tCallLoc << endl;
+	      cerr << "  tFront = " << tFront << endl;
+	      cerr << "  T = " << T << endl;
+	      cerr << "  tBit = " << tBit << endl;
+	      cerr << "  state.seq = " << state.seq << endl;
+	      cerr << "  state.node = " << state.node << endl;
+	      cerr << "  state.count = " << state.count << endl;
+	      assert(tBitExtOK); // error out
+	    }
 
 	    // randomly sample an actual haplotype from this prefix, moving up to 10 hets ahead
 	    for (int m = 2*t+1; m < 2*T && m < 2*t+20; m++) {
