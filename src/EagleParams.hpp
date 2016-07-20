@@ -31,7 +31,7 @@ namespace EAGLE {
 
     // main input files
     std::string famFile, bimFile, bedFile, vcfFile, vcfRef, vcfTarget;
-    int chrom;
+    int chrom, chromX;
 
     // optional reference map file for filling in genpos
     std::string geneticMapFile;

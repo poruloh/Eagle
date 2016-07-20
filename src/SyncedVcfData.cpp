@@ -29,6 +29,7 @@
 #include "Types.hpp"
 #include "MemoryUtils.hpp"
 #include "MapInterpolater.hpp"
+#include "StringUtils.hpp"
 #include "SyncedVcfData.hpp"
 
 namespace EAGLE {
@@ -41,7 +42,7 @@ namespace EAGLE {
   using std::cerr;
   using std::endl;
 
-  void process_ref_genotypes(int nsmpl, int ngt, int32_t *gt, bool refAltSwap,
+  void process_ref_genotypes(int nsmpl, int ngt, int32_t *gt, bool allowHaploid, bool refAltSwap,
 			     vector <bool> &hapsRef, int &numMissing, int &numUnphased, uint &w) {
     numMissing = numUnphased = 0;
     if (ngt != 2*nsmpl) {
@@ -56,18 +57,32 @@ namespace EAGLE {
 	bool haps[2]; bool missing = false, unphased = false;
 	for (int j=0; j<ploidy; j++)
 	  {
-	    if ( ptr[j]==bcf_int32_vector_end ) { // this sample is haploid if ploidy==2
-	      if ( missing ) continue;  // missing diploid genotype can be written in VCF as "."
-	      cerr << "ERROR: ref genotypes contain haploid sample" << endl;
-	      exit(1);
-	    }
-	    if ( bcf_gt_is_missing(ptr[j]) ) { // missing allele
-	      missing = true;
+	    if ( ptr[j]==bcf_int32_vector_end ) {
+	      if (j == 0) {
+		cerr << "ERROR: ptr[0]==bcf_int32_vector_end... zero ploidy?" << endl;
+		exit(1);
+	      }
+	      else { // 2nd of ploidy==2 genotypes is set to bcf_int32_vector_end => haploid
+		if ( missing ) continue;  // missing diploid genotype can be written in VCF as "."
+		else if (allowHaploid) { // X chromosome => haploid ok
+		  haps[j] = haps[j-1]; // encode as diploid homozygote
+		  unphased = false;
+		}
+		else {
+		  cerr << "ERROR: ref genotypes contain haploid sample" << endl;
+		  exit(1);
+		}
+	      }
 	    }
 	    else {
-	      int idx = bcf_gt_allele(ptr[j]); // allele index
-	      haps[j] = (idx >= 1); // encode REF allele -> 0, ALT allele(s) -> 1
-	      if ( j==1 && !bcf_gt_is_phased(ptr[j]) ) unphased = true;
+	      if ( bcf_gt_is_missing(ptr[j]) ) { // missing allele
+		missing = true;
+	      }
+	      else {
+		int idx = bcf_gt_allele(ptr[j]); // allele index
+		haps[j] = (idx >= 1); // encode REF allele -> 0, ALT allele(s) -> 1
+		if ( j==1 && !bcf_gt_is_phased(ptr[j]) ) unphased = true;
+	      }
 	    }
 	  }
 	if (missing) {
@@ -88,8 +103,8 @@ namespace EAGLE {
       }
   }
 
-  void process_target_genotypes(int nsmpl, int ngt, int32_t *gt, vector <uchar> &genosTarget,
-				int &numMissing) {
+  void process_target_genotypes(int nsmpl, int ngt, int32_t *gt, bool allowHaploid,
+				vector <uchar> &genosTarget, int &numMissing) {
     numMissing = 0;
     if (ngt != 2*nsmpl) {
       cerr << "ERROR: target ploidy != 2 (ngt != 2*nsmpl): ngt="
@@ -104,22 +119,34 @@ namespace EAGLE {
 	uchar g = 0;
 	for (int j=0; j<ploidy; j++)
 	  {
-	    if ( ptr[j]==bcf_int32_vector_end ) { // this sample is haploid if ploidy==2
-	      if ( missing ) continue;  // missing diploid genotype can be written in VCF as "."
-	      cerr << "ERROR: target genotypes contain haploid sample" << endl;
-	      exit(1);
-	    }
-	    if ( bcf_gt_is_missing(ptr[j]) ) { // missing allele
-	      missing = true;
-	    }
-	    else {
-	      int idx = bcf_gt_allele(ptr[j]); // allele index
-	      if (idx > 1) {
-		cerr << "ERROR: multi-allelic site found in target; should have been filtered"
-		     << endl;
+	    if ( ptr[j]==bcf_int32_vector_end ) {
+	      if (j == 0) {
+		cerr << "ERROR: ptr[0]==bcf_int32_vector_end... zero ploidy?" << endl;
 		exit(1);
 	      }
-	      g += idx;
+	      else { // 2nd of ploidy==2 genotypes is set to bcf_int32_vector_end => haploid
+		if ( missing ) continue;  // missing diploid genotype can be written in VCF as "."
+		else if (allowHaploid) // X chromosome => haploid ok
+		  g *= 2; // encode as diploid homozygote
+		else {
+		  cerr << "ERROR: target genotypes contain haploid sample" << endl;
+		  exit(1);
+		}
+	      }
+	    }
+	    else {
+	      if ( bcf_gt_is_missing(ptr[j]) ) { // missing allele
+		missing = true;
+	      }
+	      else {
+		int idx = bcf_gt_allele(ptr[j]); // allele index
+		if (idx > 1) {
+		  cerr << "ERROR: multi-allelic site found in target; should have been filtered"
+		       << endl;
+		  exit(1);
+		}
+		g += idx;
+	      }
 	    }
 	  }
 	if (missing) {
@@ -131,9 +158,10 @@ namespace EAGLE {
   }
 
   vector < pair <int, int> > SyncedVcfData::processVcfs
-  (const string &vcfRef, const string &vcfTarget, bool allowRefAltSwap, int chrom, double bpStart,
-   double bpEnd, vector <bool> &hapsRef, vector <uchar> &genosTarget, const string &tmpFile,
-   const string &writeMode, int usePS, vector < vector < pair <int, int> > > &conPSall) {
+  (const string &vcfRef, const string &vcfTarget, bool allowRefAltSwap, int chrom, int chromX,
+   double bpStart, double bpEnd, vector <bool> &hapsRef, vector <uchar> &genosTarget,
+   const string &tmpFile, const string &writeMode, int usePS,
+   vector < vector < pair <int, int> > > &conPSall) {
 
     vector < pair <int, int> > chrBps;
 
@@ -273,14 +301,9 @@ namespace EAGLE {
     if ( prev_rid<0 ) 
     { 
         prev_rid = tgt->rid; 
-        if ( !chrom )   // learn the human readable id
+        if ( !chrom ) // learn the human-readable id
         {
-            sscanf(bcf_hdr_id2name(tgt_hdr, tgt->rid), "%d", &chrom);
-            if (!(chrom >= 1 && chrom <= 22)) {
-                cerr << "ERROR: Invalid chromosome number: " << bcf_hdr_id2name(tgt_hdr, tgt->rid)
-                    << endl;
-                exit(1);
-            }
+            chrom = StringUtils::bcfNameToChrom(bcf_hdr_id2name(tgt_hdr, tgt->rid), 1, chromX);
         }
     }
     if ( prev_rid!=tgt->rid ) break;
@@ -295,15 +318,15 @@ namespace EAGLE {
 	// check for missing/unphased ref genos (missing -> REF allele; unphased -> random phase)
 	int nref_gt = bcf_get_genotypes(ref_hdr, ref, &ref_gt, &mref_gt);
 	int numMissing, numUnphased;
-	process_ref_genotypes(Nref, nref_gt, ref_gt, refAltSwap, hapsRef, numMissing, numUnphased,
-			      w);
+	process_ref_genotypes(Nref, nref_gt, ref_gt, chrom==chromX, refAltSwap, hapsRef,
+			      numMissing, numUnphased, w);
 	if (numMissing) MwithMissingRef++;
 	if (numUnphased) MwithUnphasedRef++;
 	GmissingRef += numMissing;
 	GunphasedRef += numUnphased;
 
 	// process target genotypes: append Ntarget entries (0/1/2/9) to genosTarget[]
-	process_target_genotypes(Ntarget, ntgt_gt, tgt_gt, genosTarget, numMissing);
+	process_target_genotypes(Ntarget, ntgt_gt, tgt_gt, chrom==chromX, genosTarget, numMissing);
 	GmissingTarget += numMissing;
 
 	// process target PS field
@@ -445,7 +468,7 @@ namespace EAGLE {
    * fills in cM coordinates and seg64cMvecs, genoBits
    */
   SyncedVcfData::SyncedVcfData(const string &vcfRef, const string &vcfTarget, bool allowRefAltSwap,
-			       int chrom, double bpStart, double bpEnd,
+			       int chrom, int chromX, double bpStart, double bpEnd,
 			       const string &geneticMapFile, double cMmax, const string &tmpFile,
 			       const string &writeMode, int usePS,
 			       vector < vector < pair <int, int> > > &conPSall) {
@@ -454,8 +477,8 @@ namespace EAGLE {
     vector <bool> hapsRef;     // M*2*Nref
     vector <uchar> genosTarget; // M*Ntarget
     vector < pair <int, int> > chrBps = 
-      processVcfs(vcfRef, vcfTarget, allowRefAltSwap, chrom, bpStart, bpEnd, hapsRef, genosTarget,
-		  tmpFile, writeMode, usePS, conPSall);
+      processVcfs(vcfRef, vcfTarget, allowRefAltSwap, chrom, chromX, bpStart, bpEnd, hapsRef,
+		  genosTarget, tmpFile, writeMode, usePS, conPSall);
 
     // interpolate genetic coordinates
     vector <double> cMs = processMap(chrBps, geneticMapFile);

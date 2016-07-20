@@ -670,8 +670,9 @@ namespace EAGLE {
    * only saves chrom, physpos, genpos in snp info (rest will be reread from VCF during output)
    * allocates memory, reads genotypes, and restricts to region if specified; does not do QC
    */
-  void GenoData::initVcf(const string &vcfFile, const int inputChrom, double bpStart, double bpEnd,
-			 const string &geneticMapFile, bool noMapCheck, double cMmax) {
+  void GenoData::initVcf(const string &vcfFile, const int inputChrom, const int chromX,
+			 double bpStart, double bpEnd, const string &geneticMapFile,
+			 bool noMapCheck, double cMmax) {
     
     htsFile *fin = hts_open(vcfFile.c_str(), "r");
     bcf_hdr_t *hdr = bcf_hdr_read(fin);
@@ -685,13 +686,8 @@ namespace EAGLE {
     int wantChrom = inputChrom; // might be 0; if so, update
     // read genos; save chrom and physpos for each SNP
     while (bcf_read(fin, hdr, rec) >= 0) {
-      /// check CHROM
-      int chrom;
-      sscanf(bcf_hdr_id2name(hdr, rec->rid), "%d", &chrom);
-      if (!(chrom >= 1 && chrom <= 22)) {
-	cerr << "ERROR: Invalid chromosome number: " << bcf_hdr_id2name(hdr, rec->rid) << endl;
-	exit(1);
-      }
+      // check CHROM
+      int chrom = StringUtils::bcfNameToChrom(bcf_hdr_id2name(hdr, rec->rid), 1, chromX);
       if (wantChrom == 0) wantChrom = chrom; // if --chrom was not specified, set to first
       if (chrom != wantChrom) { // only allow multi-chrom file if --chrom has been specified
 	if (inputChrom == 0) {
@@ -720,7 +716,7 @@ namespace EAGLE {
       // read genotypes
       int ngt = bcf_get_genotypes(hdr, rec, &gt, &mgt);
       if (ngt != 2 * (int) NpreQC) {
-	cerr << "ERROR: Non-diploid sample found" << endl;
+	cerr << "ERROR: Samples are not diploid" << endl;
 	exit(1);
       }
       for (int i = 0; i < (int) NpreQC; i++) {
@@ -730,10 +726,27 @@ namespace EAGLE {
 	uchar geno = 0;
 	bool missing = false;
 	for (int j = 0; j < ploidy; j++) {
-	  if ( bcf_gt_is_missing(ptr[j]) ) // missing allele
-	    missing = true;
-	  else
-	    geno += bcf_gt_allele(ptr[j]); // 0=REF, 1=ALT (multi-allelics prohibited)
+	  if ( ptr[j]==bcf_int32_vector_end ) {
+	    if (j == 0) {
+	      cerr << "ERROR: ptr[0]==bcf_int32_vector_end... zero ploidy?" << endl;
+	      exit(1);
+	    }
+	    else { // 2nd of ploidy==2 genotypes is set to bcf_int32_vector_end => haploid
+	      if ( missing ) continue;  // missing diploid genotype can be written in VCF as "."
+	      else if (wantChrom == chromX) // X chromosome => haploid ok
+		geno *= 2; // encode as diploid homozygote
+	      else {
+		cerr << "ERROR: Haploid genotype found" << endl;
+		exit(1);
+	      }
+	    }
+	  }
+	  else {
+	    if ( bcf_gt_is_missing(ptr[j]) ) // missing allele
+	      missing = true;
+	    else
+	      geno += bcf_gt_allele(ptr[j]); // 0=REF, 1=ALT (multi-allelics prohibited)
+	  }
 	}
 
 	if (missing) geno = 3;

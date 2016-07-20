@@ -48,9 +48,10 @@ void phaseWithRef(const EagleParams &params, Timer &timer, double t0, int argc, 
   string outFile = params.outPrefix + "." + params.vcfOutSuffix;
   vector < vector < pair <int, int> > > conPSall;
   SyncedVcfData vcfData(params.vcfRef, params.vcfTarget, params.allowRefAltSwap, params.chrom,
-			params.bpStart-params.bpFlanking, params.bpEnd+params.bpFlanking,
-			params.geneticMapFile, params.cMmax==0 ? 1 : params.cMmax,
-			tmpFile, params.vcfWriteMode, params.usePS, conPSall);
+			params.chromX, params.bpStart-params.bpFlanking,
+			params.bpEnd+params.bpFlanking, params.geneticMapFile,
+			params.cMmax==0 ? 1 : params.cMmax, tmpFile, params.vcfWriteMode,
+			params.usePS, conPSall);
 
   Eagle eagle(vcfData.getNref(), vcfData.getNtarget(), vcfData.getMseg64(),
 	      vcfData.getGenoBits(), vcfData.getSeg64cMvecs(), params.pErr);
@@ -160,8 +161,8 @@ void phaseWithRef(const EagleParams &params, Timer &timer, double t0, int argc, 
 
   timer.update_time();
   cout << "Writing " << params.vcfOutSuffix << " output to " << outFile << endl;
-  eagle.writeVcf(tmpFile, outFile, params.bpStart, params.bpEnd, params.vcfWriteMode,
-		 params.noImpMissing, argc, argv);
+  eagle.writeVcf(tmpFile, outFile, params.chromX, params.bpStart, params.bpEnd,
+		 params.vcfWriteMode, params.noImpMissing, argc, argv);
   cout << "Time for writing output: " << timer.update_time() << endl;
 
   cout << "Total elapsed time for analysis = " << (timer.get_time()-t0) << " sec" << endl;
@@ -242,7 +243,7 @@ int main(int argc, char *argv[]) {
 
   GenoData genoData;
   if (!params.vcfFile.empty())
-    genoData.initVcf(params.vcfFile, params.chrom, params.bpStart, params.bpEnd,
+    genoData.initVcf(params.vcfFile, params.chrom, params.chromX, params.bpStart, params.bpEnd,
 		     params.geneticMapFile, params.noMapCheck, params.cMmax);
   else 
     genoData.initBed(params.famFile, params.bimFile, params.bedFile, params.chrom, params.bpStart,
@@ -467,8 +468,8 @@ int main(int argc, char *argv[]) {
     if (!params.vcfFile.empty()) {
       string outFile = params.outPrefix + "." + params.vcfOutSuffix;
       cout << "Writing " << params.vcfOutSuffix << " output to " << outFile << endl;
-      eagle.writeVcfNonRef(params.vcfFile, outFile, params.chrom, params.bpStart, params.bpEnd,
-			   params.vcfWriteMode, argc, argv);
+      eagle.writeVcfNonRef(params.vcfFile, outFile, params.chrom, params.chromX, params.bpStart,
+			   params.bpEnd, params.vcfWriteMode, argc, argv);
     }
     else {
       cout << "Writing .haps.gz and .sample output" << endl; timer.update_time();

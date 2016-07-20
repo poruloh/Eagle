@@ -101,8 +101,9 @@ namespace EAGLE {
      * only saves chrom, physpos, genpos in snp info (rest will be reread from VCF during output)
      * allocates memory, reads genotypes, and restricts to region if specified; does not do QC
      */
-    void initVcf(const std::string &vcfFile, const int inputChrom, double bpStart, double bpEnd,
-		 const std::string &geneticMapFile, bool noMapCheck, double cMmax);
+    void initVcf(const std::string &vcfFile, const int inputChrom, const int chromX,
+		 double bpStart, double bpEnd, const std::string &geneticMapFile, bool noMapCheck,
+		 double cMmax);
 
     void printRange(void) const;
 

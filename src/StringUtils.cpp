@@ -20,6 +20,8 @@
 #include <string>
 #include <cstdlib>
 #include <cstdio>
+#include <cstring>
+#include <cctype>
 #include <iostream>
 #include <sstream>
 
@@ -125,4 +127,25 @@ namespace StringUtils {
     }
     return expanded;
   }
+
+  int bcfNameToChrom(const char *nameBuf, int chromMin, int chromX) {
+    int chrom;
+    int startPos = 0;
+    if (strlen(nameBuf)>3 &&
+	tolower(nameBuf[0])=='c' && tolower(nameBuf[1])=='h' && tolower(nameBuf[2])=='r')
+      startPos = 3; // allow prefix "chr"
+    if ((int) strlen(nameBuf) == startPos + 1 && toupper(nameBuf[startPos])=='X')
+      chrom = chromX;
+    else {
+      sscanf(nameBuf + startPos, "%d", &chrom);
+      if (!isdigit(nameBuf[startPos]) || !(chrom >= chromMin && chrom <= chromX)) {
+	cerr << "ERROR: Invalid chromosome: " << nameBuf << endl;
+	cerr << "       Chromosome number must be between " << chromMin
+	     << " and --chromX (= " << chromX << ")" << endl;
+	exit(1);
+      }
+    }
+    return chrom;
+  }
+
 }

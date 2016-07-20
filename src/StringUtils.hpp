@@ -38,6 +38,8 @@ namespace StringUtils {
   // if end==start-1, will return empty
   std::vector <std::string> expandRangeTemplate(const std::string &str);
   std::vector <std::string> expandRangeTemplates(const std::vector <std::string> &rangeTemplates);
+
+  int bcfNameToChrom(const char *nameBuf, int chromMin, int chromX);
 }
 
 #endif

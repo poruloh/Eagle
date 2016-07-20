@@ -3216,8 +3216,9 @@ namespace EAGLE {
     bcf_hdr_sync(hdr);
   }
 
-  void Eagle::writeVcf(const string &tmpFile, const string &outFile, double bpStart, double bpEnd,
-		       const string &writeMode, bool noImpMissing, int argc, char **argv) const {
+  void Eagle::writeVcf(const string &tmpFile, const string &outFile, int chromX, double bpStart,
+		       double bpEnd, const string &writeMode, bool noImpMissing, int argc,
+		       char **argv) const {
 
     htsFile *htsTmp = hts_open(tmpFile.c_str(), "r");
     htsFile *out = hts_open(outFile.c_str(), writeMode.c_str());
@@ -3231,7 +3232,11 @@ namespace EAGLE {
 
     uint64 m64j = 0; // SNP index; update to correspond to current record
 
+    vector <int> mostRecentPloidy(N-Nref, 2);
+
     while (bcf_read(htsTmp, hdr, rec) >= 0) {
+
+      int chrom = StringUtils::bcfNameToChrom(bcf_hdr_id2name(hdr, rec->rid), 1, chromX);
 
       int ntgt_gt = bcf_get_genotypes(hdr, rec, &tgt_gt, &mtgt_gt);
       
@@ -3241,38 +3246,54 @@ namespace EAGLE {
 	  int ploidy = 2;
 	  int *ptr = tgt_gt + i*ploidy;
 
-	  bool missing = false;
-	  int minIdx = 1000, maxIdx = 0;
-	  for (int j = 0; j < ploidy; j++) {
-	    if ( bcf_gt_is_missing(ptr[j]) ) { // missing allele
-	      missing = true;
+	  if (chrom != chromX || (bcf_gt_is_missing(ptr[0]) && mostRecentPloidy[i] == 2)
+	      || ptr[1] != bcf_int32_vector_end) { // diploid... be careful about missing '.'
+	    mostRecentPloidy[i] = 2;
+	    bool missing = false;
+	    int minIdx = 1000, maxIdx = 0;
+	    for (int j = 0; j < ploidy; j++) {
+	      if ( bcf_gt_is_missing(ptr[j]) ) { // missing allele
+		missing = true;
+	      }
+	      else {
+		int idx = bcf_gt_allele(ptr[j]); // allele index
+		minIdx = std::min(minIdx, idx);
+		maxIdx = std::max(maxIdx, idx);
+	      }
 	    }
-	    else {
-	      int idx = bcf_gt_allele(ptr[j]); // allele index
-	      minIdx = std::min(minIdx, idx);
-	      maxIdx = std::max(maxIdx, idx);
-	    }
-	  }
 
-	  if (!missing && minIdx == maxIdx) { // hom => same allele
-	    ptr[0] = ptr[1] = bcf_gt_phased(minIdx);
-	  }
-	  else if (!missing && minIdx > 0) { // ALT1/ALT2 het => don't phase
-	    ptr[0] = ptr[1] = bcf_gt_missing;
-	  }
-	  else { // REF/ALT* het => phase as called by Eagle
-	    if (missing && noImpMissing) { // don't call alleles
+	    if (!missing && minIdx == maxIdx) { // hom => same allele
+	      ptr[0] = ptr[1] = bcf_gt_phased(minIdx);
+	    }
+	    else if (!missing && minIdx > 0) { // ALT1/ALT2 het => don't phase
 	      ptr[0] = ptr[1] = bcf_gt_missing;
 	    }
-	    else {
-	      for (int j = 0; j < ploidy; j++) {
-		uint64 nTargetHap = 2*i + j;
-		int altIdx = missing ? 1 : maxIdx;
-		int hapBit = (tmpHaploBitsT[nTargetHap*Mseg64+(m64j/64)]>>(m64j&63))&1;
-		if (isFlipped64j[m64j]) hapBit = !hapBit;
-		int idx = hapBit ? altIdx : 0;
-		ptr[j] = bcf_gt_phased(idx); // convert allele index to bcf value (phased)
+	    else { // REF/ALT* het => phase as called by Eagle
+	      if (missing && noImpMissing) { // don't call alleles
+		ptr[0] = ptr[1] = bcf_gt_missing;
 	      }
+	      else {
+		for (int j = 0; j < ploidy; j++) {
+		  uint64 nTargetHap = 2*i + j;
+		  int altIdx = missing ? 1 : maxIdx;
+		  int hapBit = (tmpHaploBitsT[nTargetHap*Mseg64+(m64j/64)]>>(m64j&63))&1;
+		  if (isFlipped64j[m64j]) hapBit = !hapBit;
+		  int idx = hapBit ? altIdx : 0;
+		  ptr[j] = bcf_gt_phased(idx); // convert allele index to bcf value (phased)
+		}
+	      }
+	    }
+	  }
+	  else { // haploid
+	    mostRecentPloidy[i] = 1;
+	    if ( bcf_gt_is_missing(ptr[0]) && !noImpMissing ) { // missing allele
+	      int j = 0;
+	      uint64 nTargetHap = 2*i + j;
+	      int altIdx = 1;
+	      int hapBit = (tmpHaploBitsT[nTargetHap*Mseg64+(m64j/64)]>>(m64j&63))&1;
+	      if (isFlipped64j[m64j]) hapBit = !hapBit;
+	      int idx = hapBit ? altIdx : 0;
+	      ptr[j] = bcf_gt_phased(idx); // convert allele index to bcf value (phased)
 	    }
 	  }
 	}
@@ -3304,8 +3325,8 @@ namespace EAGLE {
   // - does not increment m64j outside the bpStart-bpEnd region
   // - does not delete tmpFile (now vcfFile with original input)
   void Eagle::writeVcfNonRef(const string &vcfFile, const string &outFile, int inputChrom,
-			     double bpStart, double bpEnd, const string &writeMode, int argc,
-			     char **argv) const {
+			     int chromX, double bpStart, double bpEnd, const string &writeMode,
+			     int argc, char **argv) const {
 
     htsFile *htsIn = hts_open(vcfFile.c_str(), "r");
     htsFile *out = hts_open(outFile.c_str(), writeMode.c_str());
@@ -3319,13 +3340,15 @@ namespace EAGLE {
 
     uint64 m64j = 0; // SNP index; update to correspond to current record
 
+    vector <int> mostRecentPloidy(N-Nref, 2);
+
     while (bcf_read(htsIn, hdr, rec) >= 0) {
-      /// check CHROM
+      // check CHROM
+      int chrom = StringUtils::bcfNameToChrom(bcf_hdr_id2name(hdr, rec->rid), 1, chromX);
       if (inputChrom != 0) {
-	int chrom;
-	sscanf(bcf_hdr_id2name(hdr, rec->rid), "%d", &chrom);
-	if (chrom != inputChrom)
+	if (chrom != inputChrom) {
 	  continue;
+	}
       }
 
       int bp = rec->pos+1;
@@ -3336,29 +3359,45 @@ namespace EAGLE {
 	  int ploidy = 2;
 	  int *ptr = tgt_gt + i*ploidy;
 
-	  bool missing = false;
-	  int minIdx = 1000, maxIdx = 0; // (shouldn't matter; SNPs should be biallelic)
-	  for (int j = 0; j < ploidy; j++) {
-	    if ( bcf_gt_is_missing(ptr[j]) ) { // missing allele
-	      missing = true;
-	    }
-	    else {
-	      int idx = bcf_gt_allele(ptr[j]); // allele index
-	      minIdx = std::min(minIdx, idx);
-	      maxIdx = std::max(maxIdx, idx);
-	    }
-	  }
-
-	  if (!missing && minIdx == maxIdx) { // hom => same allele
-	    ptr[0] = ptr[1] = bcf_gt_phased(minIdx);
-	  }
-	  else if (!missing && minIdx > 0) { // ALT1/ALT2 het => don't phase (shouldn't happen)
-	    ptr[0] = ptr[1] = bcf_gt_missing;
-	  }
-	  else { // REF/ALT* het => phase as called by Eagle
+	  if (chrom != chromX || (bcf_gt_is_missing(ptr[0]) && mostRecentPloidy[i] == 2)
+	      || ptr[1] != bcf_int32_vector_end) { // diploid... be careful about missing '.'
+	    mostRecentPloidy[i] = 2;
+	    bool missing = false;
+	    int minIdx = 1000, maxIdx = 0; // (shouldn't matter; SNPs should be biallelic)
 	    for (int j = 0; j < ploidy; j++) {
+	      if ( bcf_gt_is_missing(ptr[j]) ) { // missing allele
+		missing = true;
+	      }
+	      else {
+		int idx = bcf_gt_allele(ptr[j]); // allele index
+		minIdx = std::min(minIdx, idx);
+		maxIdx = std::max(maxIdx, idx);
+	      }
+	    }
+
+	    if (!missing && minIdx == maxIdx) { // hom => same allele
+	      ptr[0] = ptr[1] = bcf_gt_phased(minIdx);
+	    }
+	    else if (!missing && minIdx > 0) { // ALT1/ALT2 het => don't phase (shouldn't happen)
+	      ptr[0] = ptr[1] = bcf_gt_missing;
+	    }
+	    else { // REF/ALT* het => phase as called by Eagle
+	      for (int j = 0; j < ploidy; j++) {
+		uint64 nTargetHap = 2*i + j;
+		int altIdx = missing ? 1 : maxIdx;
+		int hapBit = (tmpHaploBitsT[nTargetHap*Mseg64+(m64j/64)]>>(m64j&63))&1;
+		if (isFlipped64j[m64j]) hapBit = !hapBit;
+		int idx = hapBit ? altIdx : 0;
+		ptr[j] = bcf_gt_phased(idx); // convert allele index to bcf value (phased)
+	      }
+	    }
+	  }
+	  else { // haploid
+	    mostRecentPloidy[i] = 1;
+	    if ( bcf_gt_is_missing(ptr[0]) ) { // missing allele
+	      int j = 0;
 	      uint64 nTargetHap = 2*i + j;
-	      int altIdx = missing ? 1 : maxIdx;
+	      int altIdx = 1;
 	      int hapBit = (tmpHaploBitsT[nTargetHap*Mseg64+(m64j/64)]>>(m64j&63))&1;
 	      if (isFlipped64j[m64j]) hapBit = !hapBit;
 	      int idx = hapBit ? altIdx : 0;

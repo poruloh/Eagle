@@ -39,6 +39,7 @@ namespace EAGLE {
   bool EagleParams::processCommandLineArgs(int argc, char *argv[]) {
 
     vector <string> removeFileTemplates, excludeFileTemplates;
+    string chromStr; // allow "X"
 
     namespace po = boost::program_options;
 
@@ -88,7 +89,7 @@ namespace EAGLE {
 
     po::options_description bothModes("Region selection options");
     bothModes.add_options()
-      ("chrom", po::value<int>(&chrom)->default_value(0),
+      ("chrom", po::value<string>(&chromStr)->default_value("0"),
        "chromosome to analyze (if input has many)")
       ("bpStart", po::value<double>(&bpStart)->default_value(0),
        "minimum base pair position to analyze")
@@ -123,6 +124,7 @@ namespace EAGLE {
        "use FORMAT:PS phase constraints in target VCF: 1=soft, 2=harder")
       ("runStep2", po::value<int>(&runStep2)->default_value(-1),
        "enable/disable Step 2 of non-ref algorithm (-1=auto)")
+      ("chromX", po::value<int>(&chromX)->default_value(23), "maximum chromosome number (chrX)")
 
       // Eagle1 advanced options
       ("v1fast", "Eagle1 fast mode: --maxBlockLen=0.3, --maxStatePairsStep4=100, --fracStep4=0.5")
@@ -308,10 +310,7 @@ namespace EAGLE {
 	cerr << "ERROR: --maxMissingPerIndiv must be between 0 and 1" << endl;
 	return false;
       }
-      if (!(0 <= chrom && chrom <= 22)) { // TODO: allow X chrom?
-	cerr << "ERROR: --chrom must be between 1 and 22" << endl;
-	return false;
-      }
+      chrom = StringUtils::bcfNameToChrom(chromStr.c_str(), 0, chromX); // checks for range
 
       if (pbwtIters < 0 || pbwtIters > 3) {
 	cerr << "ERROR: --pbwtIters must be either 0=auto, 1, 2, or 3" << endl;

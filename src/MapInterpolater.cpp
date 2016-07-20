@@ -60,6 +60,7 @@ namespace Genetics {
 	chrBpToRateGen[make_pair(chr, bp)] = make_pair((gen-gen0)/(1e-6*(bp-bp0)), gen);
       chr0 = chr; bp0 = bp; gen0 = gen;
     }
+    chrBpToRateGen[make_pair(chr, bp+1e9)] = make_pair(1.0, gen+1e3); // sentinel at end
   }
   
   // returns interpolated genetic position in Morgans
@@ -67,6 +68,10 @@ namespace Genetics {
     if (chrBpToRateGen.empty()) return 0;
     map < pair <int, int>, pair <double, double> >::const_iterator ubIter =
       chrBpToRateGen.upper_bound(make_pair(chr, bp)); // map record > (chr, bp)
+    if (ubIter == chrBpToRateGen.end()) {
+      cerr << "ERROR: Chromosome " << chr << " is not in genetic map" << endl;
+      exit(1);
+    }
     int ubChr = ubIter->first.first;
     int ubBp = ubIter->first.second;
     double ubRate = ubIter->second.first;
