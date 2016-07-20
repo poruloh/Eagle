@@ -166,6 +166,7 @@ namespace EAGLE {
     ~Eagle();
     
     void checkTrioErrorRate(uint64 n0, uint64 nF1, uint64 nF2) const;
+    void randomlyPhaseTmpHaploBitsT(uint64 n0);
     std::pair <double, std::vector <double> > findLongDipMatches(uint64 n0, uint64 nF1,
 								 uint64 nF2);
     double findLongHapMatches(uint64 n0, uint64 nF1, uint64 nF2, int iter);

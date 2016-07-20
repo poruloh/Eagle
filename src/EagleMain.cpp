@@ -252,13 +252,20 @@ int main(int argc, char *argv[]) {
 
   vector <double> invLD64j = genoData.computeInvLD64j(1000);
   
-  // decide whether or not to run Step 2 based on SNP density
-  if (!params.usePBWT) params.runStep2 = 1;
-  if (params.runStep2 != 0 && params.runStep2 != 1) {
+  if (!params.usePBWT) { // Eagle v1 algorithm
+    params.pbwtOnly = false; // should already be false
+    params.runStep2 = 1;
+  }
+  else { // PBWT algorithm
+    // if SNP density is >1000 SNPs/Mb, don't run Steps 1+2 (even if --pbwtOnly is not set)
     int bpSpan = genoData.getSnps().back().physpos - genoData.getSnps()[0].physpos;
     double snpsPerMb = genoData.getSnps().size() / (bpSpan*1e-6);
-    params.runStep2 = snpsPerMb <= 1000;
-    if (genoData.getMseg64() < 3U) params.runStep2 = 0; // can't run Step 2 with < 3 SNP segments
+    if (snpsPerMb > 1000) params.pbwtOnly = true;
+    if (params.pbwtOnly) params.runStep2 = 0;
+
+    // if --runStep2 hasn't yet been set, SNP density must be low; run Step 2 unless too few chunks
+    if (params.runStep2 != 0 && params.runStep2 != 1)
+      params.runStep2 = (genoData.getMseg64() >= 3U); // can't run Step 2 with < 3 SNP segments
   }
 
   Eagle eagle(genoData.getN(), genoData.getMseg64(), genoData.getGenoBits(),
@@ -308,23 +315,31 @@ int main(int argc, char *argv[]) {
 
     /***** RUN STEP 1 *****/
 
-    cout << endl << "BEGINNING STEP 1" << endl << endl;
-    double t1 = timer.get_time(); timer.update_time(); timeMN2 = 0;
+    if (!params.pbwtOnly) {
+      cout << endl << "BEGINNING STEP 1" << endl << endl;
+      double t1 = timer.get_time(); timer.update_time(); timeMN2 = 0;
 
-    for (uint att = 0; att < min(9U, (uint) children.size()); att++) // run on trio children
-      eagle.findLongDipMatches(children[att], nF1s[att], nF2s[att]);
+      for (uint att = 0; att < min(9U, (uint) children.size()); att++) // run on trio children
+	eagle.findLongDipMatches(children[att], nF1s[att], nF2s[att]);
 #pragma omp parallel for reduction(+:timeMN2) schedule(dynamic, 4)
-    for (uint i = 0; i < N; i++) {	
-      //cout << StringUtils::itos(i)+"\n" << flush;
-      timeMN2 += eagle.findLongDipMatches(i, -1, -1).first;
-      //cout << StringUtils::itos(-i)+"\n" << flush;
-    }
+      for (uint i = 0; i < N; i++) {	
+	//cout << StringUtils::itos(i)+"\n" << flush;
+	timeMN2 += eagle.findLongDipMatches(i, -1, -1).first;
+	//cout << StringUtils::itos(-i)+"\n" << flush;
+      }
 
-    if (!params.tmpPhaseConfsPrefix.empty())
-      eagle.writePhaseConfs(params.tmpPhaseConfsPrefix+".step1.bin");
-    cout << "Time for step 1: " << (timer.get_time()-t1) << endl;
-    cout << "Time for step 1 MN^2: " << timeMN2 / params.numThreads << endl;
-    eagle.outputSE(children, nF1s, nF2s, 1);
+      if (!params.tmpPhaseConfsPrefix.empty())
+	eagle.writePhaseConfs(params.tmpPhaseConfsPrefix+".step1.bin");
+      cout << "Time for step 1: " << (timer.get_time()-t1) << endl;
+      cout << "Time for step 1 MN^2: " << timeMN2 / params.numThreads << endl;
+      eagle.outputSE(children, nF1s, nF2s, 1);
+    }
+    else { // use PBWT only => phase randomly
+      cout << endl << "SKIPPED STEP 1" << endl;
+#pragma omp parallel for reduction(+:timeMN2) schedule(dynamic, 4)
+      for (uint i = 0; i < N; i++)
+	eagle.randomlyPhaseTmpHaploBitsT(i);
+    }
 
     if (params.runStep2) { // running step 2 => Step 1 phase confs were saved to phaseConfs
       cout << endl << "Making hard calls" << flush; timer.update_time();
@@ -390,7 +405,7 @@ int main(int argc, char *argv[]) {
       cout << endl << endl << "BEGINNING STEP 3 (PBWT ITERS)" << endl << endl;
       int iters = params.pbwtIters;
       if (iters == 0) {
-	iters = 2;
+	iters = 2 + params.pbwtOnly;
 	cout << "Auto-selecting number of PBWT iterations: setting --pbwtIters to "
 	     << iters << endl << endl;
       }
@@ -400,7 +415,7 @@ int main(int argc, char *argv[]) {
 
 	int skip = 16; int Kpbwt = params.Kpbwt; bool runReverse = true;
 	if (iter < iters) { // run rougher computation
-	  Kpbwt /= 2;
+	  Kpbwt >>= (iters-iter);
 	  skip *= 2;
 	  runReverse = false;
 	}

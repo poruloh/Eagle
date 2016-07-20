@@ -1512,6 +1512,32 @@ namespace EAGLE {
 	ALIGNED_FREE(runStarts[p][e]);
   }
 
+  void Eagle::randomlyPhaseTmpHaploBitsT(uint64 n0) {
+    // fast rng: last 16 bits of Marsaglia's MWC
+    uint w = 521288629;
+    for (uint i = 0; i < (n0 & 0xff); i++)
+      w=18000*(w&65535)+(w>>16);
+    
+    uint64 n1 = (n0+1) % N;
+    for (uint64 m64j = 0; m64j < Mseg64*64; m64j++)
+      if (maskSnps64j[m64j]) {
+	uint g = getGeno0123(m64j, n0);
+	if (g == 3) g = getGeno0123(m64j, n1); // if missing, try filling with geno of next sample
+	if (g == 3) g = 1; // if still missing, set to het
+	
+	if (g == 0) // nothing to do; tmpHaploBitsT is already cleared in init()
+	  ;
+	else if (g == 2) { // set bit in both parental haplotypes
+	  for (uint64 q = 0; q <= 1ULL; q++)
+	    tmpHaploBitsT[(2*n0+q)*Mseg64 + (m64j/64)] |= 1ULL<<(m64j&63);
+	}
+	else { // set bit in random parental haplotype
+	  uint64 q = (w=18000*(w&65535)+(w>>16))&1;
+	  tmpHaploBitsT[(2*n0+q)*Mseg64 + (m64j/64)] |= 1ULL<<(m64j&63);
+	}
+      }
+  }
+
   pair <double, vector <double> > Eagle::findLongDipMatches(uint64 n0, uint64 nF1, uint64 nF2) {
 
     if (!maskIndivs[n0]) return make_pair(0.0, vector <double> ());

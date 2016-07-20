@@ -110,6 +110,7 @@ namespace EAGLE {
        "history length multiplier")
       ("genoErrProb", po::value<double>(&pErr)->default_value(0.003, "0.003"),
        "estimated genotype error probability")
+      ("pbwtOnly", "in non-ref mode, use only PBWT iters (automatic for sequence data)")
       ("v1", "use Eagle1 phasing algorithm (instead of default Eagle2 algorithm)")
       ;
 
@@ -176,6 +177,11 @@ namespace EAGLE {
       po::notify(vm); // throws an error if there are any problems
 
       usePBWT = !vm.count("v1");
+      pbwtOnly = vm.count("pbwtOnly");
+      if (pbwtOnly && !usePBWT) {
+	cerr << "ERROR: --pbwtOnly cannot be specified if using the --v1 algorithm" << endl;
+	return false;
+      }
       trioCheck = vm.count("trioCheck");
 
       if (vm.count("bfile") +
