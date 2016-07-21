@@ -189,7 +189,7 @@ namespace EAGLE {
     // See also examples in bcftools/vcfisec etc.
 
     if (allowRefAltSwap)
-      sr->collapse = COLLAPSE_SNPS|COLLAPSE_INDELS;
+      sr->collapse = COLLAPSE_SNPS;
 
     if (!bcf_sr_add_reader(sr, vcfRef.c_str())) {
       cerr << "ERROR: Could not open " << vcfRef << " for reading: " << bcf_sr_strerror(sr->errnum)
