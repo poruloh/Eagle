@@ -192,13 +192,13 @@ namespace EAGLE {
       sr->collapse = COLLAPSE_SNPS|COLLAPSE_INDELS;
 
     if (!bcf_sr_add_reader(sr, vcfRef.c_str())) {
-      cerr << "ERROR: Could not open " << vcfRef << " for reading: missing file or tabix index?"
+      cerr << "ERROR: Could not open " << vcfRef << " for reading: " << bcf_sr_strerror(sr->errnum)
 	   << endl;
       exit(1);
     }
     if (!bcf_sr_add_reader(sr, vcfTarget.c_str())) {
-      cerr << "ERROR: Could not open " << vcfTarget << " for reading: missing file or tabix index?"
-	   << endl;
+      cerr << "ERROR: Could not open " << vcfTarget << " for reading: "
+	   << bcf_sr_strerror(sr->errnum) << endl;
       exit(1);
     }
 
