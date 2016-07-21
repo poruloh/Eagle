@@ -240,7 +240,7 @@ namespace EAGLE {
 
     vector <uchar> missing(M);
     int m = 0;
-    vector <float> cMtreeStarts;
+    vector <double> cMtreeStarts;
     for (uint64 m64j = 0; m64j < Mseg64*64; m64j++)
       if (maskSnps64j[m64j]) {
 	if (m % skip == 0)

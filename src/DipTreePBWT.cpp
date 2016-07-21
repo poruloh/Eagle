@@ -71,8 +71,10 @@ namespace EAGLE {
 
   // class HapWaves
 
-  HapWaves::HapWaves(const HapHedgeErr &_hapHedge, const vector <float> &_cMcoords,
-		     float _cMexpect, int _histLength, int _beamWidth, float _logPerr, int _tCur) :
+  HapWaves::HapWaves(const HapHedgeErr &_hapHedge, const vector <double> &_cMcoords,
+		     double _cMexpect, int _histLength, int _beamWidth, float _logPerr,
+		     int _tCur) :
+
     rng(123), rand01(rng, boost::uniform_01<>()),
     hapHedge(_hapHedge), cMcoords(_cMcoords), cMexpect(_cMexpect), histLength(_histLength),
     beamWidth(_beamWidth), pErr(expf(_logPerr)), maxHapPaths(2*beamWidth),
@@ -109,26 +111,26 @@ namespace EAGLE {
     }
   }
 
-  inline float sqf(float x) { return x*x; }
+  inline double sq(double x) { return x*x; }
 
   // use cMcoords and cMexpect (cMexpect>0 => coalescent; cMexpect<0 => Li-Stephens)
   float HapWaves::recombP(int tCur, int tSplit) const {
-    float p = 0;
+    double p = 0;
     if (cMexpect > 0) { // coalescent IBD length distribution with mean a = cMexpect
-      float a = cMexpect;
-      float term1 = 1 / sqf(1 + (cMcoords[tCur]-cMcoords[tSplit])/a);
-      float term2 = tCur+1 == (int) cMcoords.size() ? 0 :
-	1 / sqf(1 + (cMcoords[tCur+1]-cMcoords[tSplit])/a);
+      double a = cMexpect;
+      double term1 = 1 / sq(1 + (cMcoords[tCur]-cMcoords[tSplit])/a);
+      double term2 = tCur+1 == (int) cMcoords.size() ? 0 :
+	1 / sq(1 + (cMcoords[tCur+1]-cMcoords[tSplit])/a);
       p = term1 - term2;
     }
     else { // Li-Stephens IBD length distribution with mean a = -cMexpect
-      float a = -cMexpect;
-      float term1 = expf(-(cMcoords[tCur]-cMcoords[tSplit])/a);
-      float term2 = tCur+1 == (int) cMcoords.size() ? 0 :
-	expf(-(cMcoords[tCur+1]-cMcoords[tSplit])/a);
+      double a = -cMexpect;
+      double term1 = exp(-(cMcoords[tCur]-cMcoords[tSplit])/a);
+      double term2 = tCur+1 == (int) cMcoords.size() ? 0 :
+	exp(-(cMcoords[tCur+1]-cMcoords[tSplit])/a);
       p = term1 - term2;
     }
-    const float minRecombP = 0.000001f, maxRecombP = 1.0f;//pErr;
+    const double minRecombP = 0.000001, maxRecombP = 1.0;//pErr;
     return std::max(std::min(p, maxRecombP), minRecombP);
   }
 
@@ -418,7 +420,7 @@ namespace EAGLE {
   }
 
   DipTree::DipTree(const HapHedgeErr &_hapHedge, const vector <uchar> &_genos,
-		   const char *_constraints, const vector <float> &_cMcoords, float _cMexpect,
+		   const char *_constraints, const vector <double> &_cMcoords, double _cMexpect,
 		   int _histLength, int _beamWidth, float _logPerr, int _tCur) :
     rng(12345), rand01(rng, boost::uniform_01<>()),
     hapHedge(_hapHedge),

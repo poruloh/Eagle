@@ -80,8 +80,8 @@ namespace EAGLE {
     boost::variate_generator<boost::lagged_fibonacci607&, boost::uniform_01<> > rand01;
 
     const HapHedgeErr &hapHedge;
-    const std::vector <float> &cMcoords;
-    const float cMexpect;
+    const std::vector <double> &cMcoords;
+    const double cMexpect;
     const int histLength, beamWidth;
     const float pErr;
     const int maxHapPaths, maxHapPrefixes;
@@ -93,7 +93,7 @@ namespace EAGLE {
 
   public:
     
-    HapWaves(const HapHedgeErr &_hapHedge, const std::vector <float> &_cMcoords, float cMexpect,
+    HapWaves(const HapHedgeErr &_hapHedge, const std::vector <double> &_cMcoords, double cMexpect,
 	     int _histLength, int _beamWidth, float _logPerr, int _tCur);
     ~HapWaves(void);
 
@@ -152,7 +152,7 @@ namespace EAGLE {
   public:
 
     DipTree(const HapHedgeErr &_hapHedge, const std::vector <uchar> &_genos,
-	    const char *_constraints, const std::vector <float> &_cMcoords, float cMexpect,
+	    const char *_constraints, const std::vector <double> &_cMcoords, double cMexpect,
 	    int _histLength, int _beamWidth, float _logPerr, int _tCur);
 
     // compute probability of AA at hets tCallLoc1 and tCallLoc2

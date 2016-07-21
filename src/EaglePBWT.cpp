@@ -104,14 +104,14 @@ namespace EAGLE {
     return refIsMono;
   }
 
-  float Eagle::runPBWT(uint64 n0, uint64 nF1, uint64 nF2, int Kpbwt, float cMexpect,
+  float Eagle::runPBWT(uint64 n0, uint64 nF1, uint64 nF2, int Kpbwt, double cMexpect,
 		       double histFactor, bool runReverse, bool useTargetHaps, bool impMissing) {
     vector < pair <int, int> > noConPS;
     return runPBWT(n0, nF1, nF2, Kpbwt, cMexpect, histFactor, runReverse, useTargetHaps,
 		   impMissing, 0, noConPS);
   }
 
-  float Eagle::runPBWT(uint64 n0, uint64 nF1, uint64 nF2, int Kpbwt, float cMexpect,
+  float Eagle::runPBWT(uint64 n0, uint64 nF1, uint64 nF2, int Kpbwt, double cMexpect,
 		       double histFactor, bool runReverse, bool useTargetHaps, bool impMissing,
 		       int usePS, const vector < pair <int, int> > &conPS) {
     Timer timer;
@@ -218,7 +218,7 @@ namespace EAGLE {
     }
 
     // compute recombination probabilities
-    vector <float> cMcoords(splits64j.size()+2);
+    vector <double> cMcoords(splits64j.size()+2);
     for (uint64 s = 0; s <= splits64j.size(); s++) {
       uint64 splitStart = (s == 0 ? 0 : splits64j[s-1]);
       uint64 splitStop = (s == splits64j.size() ? Mseg64*64 : splits64j[s]);
@@ -390,7 +390,7 @@ namespace EAGLE {
 
       vector <uchar> revSplitGenos(splitGenos);
       std::reverse(revSplitGenos.begin(), revSplitGenos.end());
-      vector <float> revcMcoords(T);
+      vector <double> revcMcoords(T);
       for (int t = 0; t < T; t++) revcMcoords[t] = cMcoords[T-1] - cMcoords[T-1-t];
 
       // initialize DipTree object

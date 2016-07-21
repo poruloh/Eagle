@@ -105,7 +105,7 @@ namespace EAGLE {
        "number of conditioning haplotypes") // TODO: throw error if set in --v1 mode
       ("pbwtIters", po::value<int>(&pbwtIters)->default_value(0),
        "number of PBWT phasing iterations (0=auto)")
-      ("expectIBDcM", po::value<float>(&expectIBDcM)->default_value(2, "2.0"),
+      ("expectIBDcM", po::value<double>(&expectIBDcM)->default_value(2, "2.0"),
        "expected length of haplotype copying (cM)")
       ("histFactor", po::value<double>(&histFactor)->default_value(1, "1.0"),
        "history length multiplier")
