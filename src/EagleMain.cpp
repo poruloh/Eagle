@@ -51,7 +51,7 @@ void adjustHistFactor(double &histFactor, double hetRate, double snpRate) {
       double cMdefaultHist = 100 / snpRate / hetRate;
       printf("Typical span of default 100-het history length: %.2f cM\n", cMdefaultHist);
       const double cMminHist = 1.0;
-      histFactor = max(1.0, min(10.0, cMminHist / cMdefaultHist));
+      histFactor = max(1.0, min(20.0, cMminHist / cMdefaultHist));
       printf("Setting --histFactor=%.2f\n", histFactor);
       if (histFactor != 1)
 	printf("Typical span of %d-het history length: %.2f cM\n", (int) (100*histFactor),
@@ -76,7 +76,7 @@ void phaseWithRef(EagleParams &params, Timer &timer, double t0, int argc, char *
 	      vcfData.getGenoBits(), vcfData.getSeg64cMvecs(), params.pErr);
 
   double hetRate = eagle.computeHetRate();
-  cout << "Heterozygosity rate: " << hetRate << endl;
+  cout << "Fraction of heterozygous genotypes: " << hetRate << endl;
   if (params.usePBWT) adjustHistFactor(params.histFactor, hetRate, snpRate);
   
   uint64 Nref = vcfData.getNref(), Ntarget = vcfData.getNtarget();
@@ -298,7 +298,7 @@ int main(int argc, char *argv[]) {
 	      params.runStep2);
   
   double hetRate = eagle.computeHetRate();
-  cout << "Heterozygosity rate: " << hetRate << endl;
+  cout << "Fraction of heterozygous genotypes: " << hetRate << endl;
   if (params.usePBWT) adjustHistFactor(params.histFactor, hetRate, genoData.computeSnpRate());
   
   map <string, pair <string, string> > trioIIDs;
