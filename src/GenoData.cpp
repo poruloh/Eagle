@@ -534,6 +534,11 @@ namespace EAGLE {
     }
   }
 
+  double GenoData::computeSnpRate(void) const {
+    double cMrange = 100*(snps.back().genpos - snps[0].genpos);
+    return M/cMrange;
+  }
+
   /**    
    * reads indiv info from fam file, snp info from bim file
    * allocates memory, reads genotypes, and does QC

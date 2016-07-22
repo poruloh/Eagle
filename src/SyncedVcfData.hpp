@@ -59,7 +59,7 @@ namespace EAGLE {
 		  int chrom, int chromX, double bpStart, double bpEnd,
 		  const std::string &geneticMapFile, double cMmax, const std::string &tmpFile,
 		  const std::string &writeMode, int usePS,
-		  std::vector < std::vector < std::pair <int, int> > > &conPSall);
+		  std::vector < std::vector < std::pair <int, int> > > &conPSall, double &snpRate);
 
     ~SyncedVcfData();
 

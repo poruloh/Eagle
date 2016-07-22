@@ -3562,4 +3562,15 @@ namespace EAGLE {
   uint64 Eagle::getMseg64(void) const { return Mseg64; }
   const uchar *Eagle::getMaskSnps64j(void) const { return maskSnps64j; }
 
+  double Eagle::computeHetRate(void) const {
+    uint64 homCtr = 0, totCtr = 0;
+    for (uint64 m64 = 0; m64 < Mseg64; m64++)
+      for (uint64 n = Nref; n < N; n++) { // ref genoBits aren't initialized!
+	const uint64_masks &bits = genoBits[m64*N + n];
+	homCtr += popcount64(bits.is0 | bits.is2);
+	totCtr += popcount64(~bits.is9);
+      }
+    return 1 - homCtr / (double) totCtr;
+  }
+
 }

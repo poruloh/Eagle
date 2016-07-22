@@ -198,6 +198,7 @@ namespace EAGLE {
     uint64 getNlib(int iter) const;
     uint64 getMseg64(void) const;
     const uchar *getMaskSnps64j(void) const;
+    double computeHetRate(void) const;
 
     static int countSE(const std::vector <bool> &phaseVec);
     static int countMajorSE(const std::vector <bool> &phaseVec);

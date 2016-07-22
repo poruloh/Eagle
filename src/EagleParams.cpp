@@ -107,8 +107,8 @@ namespace EAGLE {
        "number of PBWT phasing iterations (0=auto)")
       ("expectIBDcM", po::value<double>(&expectIBDcM)->default_value(2, "2.0"),
        "expected length of haplotype copying (cM)")
-      ("histFactor", po::value<double>(&histFactor)->default_value(1, "1.0"),
-       "history length multiplier")
+      ("histFactor", po::value<double>(&histFactor)->default_value(0, "0"),
+       "history length multiplier (0=auto)")
       ("genoErrProb", po::value<double>(&pErr)->default_value(0.003, "0.003"),
        "estimated genotype error probability")
       ("pbwtOnly", "in non-ref mode, use only PBWT iters (automatic for sequence data)")

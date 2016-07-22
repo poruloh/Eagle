@@ -42,19 +42,42 @@ using namespace std;
 //#define LOCAL_TEST
 //#define OLD_IMP_MISSING
 
-void phaseWithRef(const EagleParams &params, Timer &timer, double t0, int argc, char **argv) {
+void adjustHistFactor(double &histFactor, double hetRate, double snpRate) {
+  if (histFactor == 0) {
+    if (snpRate * hetRate == 0)      
+      histFactor = 1;
+    else {
+      // compute how far (in cM) default 100 hets will typically span
+      double cMdefaultHist = 100 / snpRate / hetRate;
+      printf("Typical span of default 100-het history length: %.2f cM\n", cMdefaultHist);
+      const double cMminHist = 1.0;
+      histFactor = max(1.0, min(10.0, cMminHist / cMdefaultHist));
+      printf("Setting --histFactor=%.2f\n", histFactor);
+      if (histFactor != 1)
+	printf("Typical span of %d-het history length: %.2f cM\n", (int) (100*histFactor),
+	       cMdefaultHist*histFactor);
+      cout << flush;
+    }
+  }
+}
+
+void phaseWithRef(EagleParams &params, Timer &timer, double t0, int argc, char **argv) {
 
   string tmpFile = params.outPrefix + ".unphased." + params.vcfOutSuffix;
   string outFile = params.outPrefix + "." + params.vcfOutSuffix;
-  vector < vector < pair <int, int> > > conPSall;
+  vector < vector < pair <int, int> > > conPSall; double snpRate;
   SyncedVcfData vcfData(params.vcfRef, params.vcfTarget, params.allowRefAltSwap, params.chrom,
 			params.chromX, params.bpStart-params.bpFlanking,
 			params.bpEnd+params.bpFlanking, params.geneticMapFile,
 			params.cMmax==0 ? 1 : params.cMmax, tmpFile, params.vcfWriteMode,
-			params.usePS, conPSall);
+			params.usePS, conPSall, snpRate);
 
   Eagle eagle(vcfData.getNref(), vcfData.getNtarget(), vcfData.getMseg64(),
 	      vcfData.getGenoBits(), vcfData.getSeg64cMvecs(), params.pErr);
+
+  double hetRate = eagle.computeHetRate();
+  cout << "Heterozygosity rate: " << hetRate << endl;
+  if (params.usePBWT) adjustHistFactor(params.histFactor, hetRate, snpRate);
   
   uint64 Nref = vcfData.getNref(), Ntarget = vcfData.getNtarget();
   int iters = params.pbwtIters;
@@ -273,6 +296,10 @@ int main(int argc, char *argv[]) {
 	      genoData.getSeg64cMvecs(), genoData.getSeg64logPs(), invLD64j, genoData.getIndivs(),
 	      genoData.getSnps(), params.maskFile, genoData.getIsFlipped64j(), params.pErr,
 	      params.runStep2);
+  
+  double hetRate = eagle.computeHetRate();
+  cout << "Heterozygosity rate: " << hetRate << endl;
+  if (params.usePBWT) adjustHistFactor(params.histFactor, hetRate, genoData.computeSnpRate());
   
   map <string, pair <string, string> > trioIIDs;
   vector <uint> children, nF1s, nF2s;

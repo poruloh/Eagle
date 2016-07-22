@@ -471,7 +471,7 @@ namespace EAGLE {
 			       int chrom, int chromX, double bpStart, double bpEnd,
 			       const string &geneticMapFile, double cMmax, const string &tmpFile,
 			       const string &writeMode, int usePS,
-			       vector < vector < pair <int, int> > > &conPSall) {
+			       vector < vector < pair <int, int> > > &conPSall, double &snpRate) {
 
     // perform synced read
     vector <bool> hapsRef;     // M*2*Nref
@@ -492,6 +492,7 @@ namespace EAGLE {
     cout << "Physical distance range: " << physRange << " base pairs" << endl;
     cout << "Genetic distance range:  " << cMrange << " cM" << endl;
     cout << "Average # SNPs per cM:   " << (int) (M/cMrange + 0.5) << endl;
+    snpRate = M/cMrange;
 
     if (physRange == 0 || cMrange == 0) {
       cerr << "ERROR: Physical and genetic distance ranges must be positive" << endl;

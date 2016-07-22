@@ -132,6 +132,7 @@ namespace EAGLE {
     std::vector <double> computeInvLD64j(uint64 NsubMax) const;
     const std::vector <IndivInfoX> &getIndivs(void) const;
     const std::vector <bool> &getIsFlipped64j(void) const;
+    double computeSnpRate(void) const;
 
   };
 }
