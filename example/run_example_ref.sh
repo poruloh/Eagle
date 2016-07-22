@@ -4,6 +4,6 @@ echo
 ../eagle \
     --vcfRef=ref.bcf \
     --vcfTarget=target.vcf.gz \
-    --geneticMapFile=../tables/genetic_map_hg19.txt.gz \
+    --geneticMapFile=../tables/genetic_map_hg19_withX.txt.gz \
     --outPrefix=target.phased \
     2>&1 | tee example_ref.log

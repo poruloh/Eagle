@@ -1,7 +1,7 @@
                       +-----------------------------+
                       |                             |
-                      |   Eagle v2.2                |
-                      |   July 15, 2016             |
+                      |   Eagle v2.3                |
+                      |   July 22, 2016             |
                       |   Po-Ru Loh                 |
                       |                             |
                       +-----------------------------+
@@ -50,28 +50,31 @@ Auto-selecting --maxBlockLen: 0.25 cM
 Number of <=(64-SNP, 0.25cM) segments: 68
 Average # SNPs per segment: 26
 Estimating LD scores using 379 indivs
+Fraction of heterozygous genotypes: 0.246308
+Typical span of default 100-het history length: 5.17 cM
+Setting --histFactor=1.00
 
 BEGINNING STEP 1
 
-Time for step 1: 0.370629
-Time for step 1 MN^2: 0.0242168
+Time for step 1: 0.373152
+Time for step 1 MN^2: 0.0242926
 
-Making hard calls (time: 0.028337)
+Making hard calls (time: 0.0283859)
 
 
 BEGINNING STEP 2
 
 BATCH 1 OF 1
 Building hash tables
-.................................................................. (time: 0.0518332)
+.................................................................. (time: 0.0523882)
 
 Phasing samples 1-379
-Time for phasing batch: 0.45058
+Time for phasing batch: 0.449098
 
-Making hard calls (time: 0.0294189)
+Making hard calls (time: 0.029567)
 
-Time for step 2: 0.531841
-Time for step 2 MN^2: 0.0594578
+Time for step 2: 0.531062
+Time for step 2 MN^2: 0.0591508
 
 
 BEGINNING STEP 3 (PBWT ITERS)
@@ -84,108 +87,108 @@ BEGINNING PBWT ITER 1
 BATCH 1 OF 10
 
 Phasing samples 1-37
-Time for phasing batch: 1.69798
+Time for phasing batch: 1.75458
 
 BATCH 2 OF 10
 
 Phasing samples 38-75
-Time for phasing batch: 1.51563
+Time for phasing batch: 1.59901
 
 BATCH 3 OF 10
 
 Phasing samples 76-113
-Time for phasing batch: 1.62229
+Time for phasing batch: 1.69437
 
 BATCH 4 OF 10
 
 Phasing samples 114-151
-Time for phasing batch: 1.53773
+Time for phasing batch: 1.62289
 
 BATCH 5 OF 10
 
 Phasing samples 152-189
-Time for phasing batch: 1.53177
+Time for phasing batch: 1.59901
 
 BATCH 6 OF 10
 
 Phasing samples 190-227
-Time for phasing batch: 1.53565
+Time for phasing batch: 1.63321
 
 BATCH 7 OF 10
 
 Phasing samples 228-265
-Time for phasing batch: 1.54446
+Time for phasing batch: 1.63894
 
 BATCH 8 OF 10
 
 Phasing samples 266-303
-Time for phasing batch: 1.49793
+Time for phasing batch: 1.57722
 
 BATCH 9 OF 10
 
 Phasing samples 304-341
-Time for phasing batch: 1.47852
+Time for phasing batch: 1.56258
 
 BATCH 10 OF 10
 
 Phasing samples 342-379
-Time for phasing batch: 1.55921
+Time for phasing batch: 1.63269
 
-Time for PBWT iter 1: 15.5212
+Time for PBWT iter 1: 16.3145
 
 BEGINNING PBWT ITER 2
 
 BATCH 1 OF 10
 
 Phasing samples 1-37
-Time for phasing batch: 2.58329
+Time for phasing batch: 2.73515
 
 BATCH 2 OF 10
 
 Phasing samples 38-75
-Time for phasing batch: 2.43393
+Time for phasing batch: 2.58695
 
 BATCH 3 OF 10
 
 Phasing samples 76-113
-Time for phasing batch: 2.58178
+Time for phasing batch: 2.70714
 
 BATCH 4 OF 10
 
 Phasing samples 114-151
-Time for phasing batch: 2.3885
+Time for phasing batch: 2.54992
 
 BATCH 5 OF 10
 
 Phasing samples 152-189
-Time for phasing batch: 2.40465
+Time for phasing batch: 2.51631
 
 BATCH 6 OF 10
 
 Phasing samples 190-227
-Time for phasing batch: 2.4919
+Time for phasing batch: 2.62562
 
 BATCH 7 OF 10
 
 Phasing samples 228-265
-Time for phasing batch: 2.47851
+Time for phasing batch: 2.60083
 
 BATCH 8 OF 10
 
 Phasing samples 266-303
-Time for phasing batch: 2.40496
+Time for phasing batch: 2.4503
 
 BATCH 9 OF 10
 
 Phasing samples 304-341
-Time for phasing batch: 2.39951
+Time for phasing batch: 2.54366
 
 BATCH 10 OF 10
 
 Phasing samples 342-379
-Time for phasing batch: 2.47701
+Time for phasing batch: 2.56976
 
-Time for PBWT iter 2: 24.6441
+Time for PBWT iter 2: 25.8857
 Writing .haps.gz and .sample output
-Time for writing output: 0.31648
-Total elapsed time for analysis = 41.4705 sec
+Time for writing output: 0.370972
+Total elapsed time for analysis = 43.6733 sec

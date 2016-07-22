@@ -1,6 +1,6 @@
 ../eagle \
     --vcf=EUR_test.vcf.gz \
-    --geneticMapFile=../tables/genetic_map_hg19.txt.gz \
+    --geneticMapFile=../tables/genetic_map_hg19_withX.txt.gz \
     --chrom=21 \
     --outPrefix=phased \
     --numThreads=4 \

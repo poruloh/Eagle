@@ -1,7 +1,7 @@
                       +-----------------------------+
                       |                             |
-                      |   Eagle v2.2                |
-                      |   July 15, 2016             |
+                      |   Eagle v2.3                |
+                      |   July 22, 2016             |
                       |   Po-Ru Loh                 |
                       |                             |
                       +-----------------------------+
@@ -14,7 +14,7 @@ Command line options:
 ../eagle \
     --vcfRef=ref.bcf \
     --vcfTarget=target.vcf.gz \
-    --geneticMapFile=../tables/genetic_map_hg19.txt.gz \
+    --geneticMapFile=../tables/genetic_map_hg19_withX.txt.gz \
     --outPrefix=target.phased 
 
 Setting number of threads to 1
@@ -37,12 +37,15 @@ SNPs ignored: 0 SNPs in target but not reference
 Missing rate in target genotypes: 0.00116279
 
 Filling in genetic map coordinates using reference file:
-  ../tables/genetic_map_hg19.txt.gz
+  ../tables/genetic_map_hg19_withX.txt.gz
 Physical distance range: 3595565 base pairs
 Genetic distance range:  10.292 cM
 Average # SNPs per cM:   42
 Number of <=(64-SNP, 1cM) segments: 9
 Average # SNPs per segment: 47
+Fraction of heterozygous genotypes: 0.178114
+Typical span of default 100-het history length: 13.44 cM
+Setting --histFactor=1.00
 
 Auto-selecting number of phasing iterations: setting --pbwtIters to 1
 
@@ -54,21 +57,21 @@ PHASING ITER 1 OF 1
 
 Phasing target samples
 ................................................................................
-Time for phasing iter 1: 0.242276
+Time for phasing iter 1: 0.23367
 Writing vcf.gz output to target.phased.vcf.gz
 [W::vcf_parse] INFO 'AC' is not defined in the header, assuming Type=String
 [W::vcf_parse] INFO 'AN' is not defined in the header, assuming Type=String
 [W::vcf_parse] INFO 'DP' is not defined in the header, assuming Type=String
 [W::vcf_parse] INFO 'AFR_AF' is not defined in the header, assuming Type=String
 [W::vcf_parse] INFO 'EX_TARGET' is not defined in the header, assuming Type=String
-Time for writing output: 0.0188529
-Total elapsed time for analysis = 8.95566 sec
+Time for writing output: 0.028584
+Total elapsed time for analysis = 9.43616 sec
 
 Mean phase confidence of each target individual:
 ID	PHASE_CONFIDENCE
 HG00403	0.953163
 HG00404	0.949485
-HG00406	0.926717
+HG00406	0.927005
 HG00407	0.950292
 HG00419	0.938822
 HG00421	0.93367
