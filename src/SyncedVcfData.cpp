@@ -171,7 +171,13 @@ namespace EAGLE {
     if ( chrom!=0 )
     {
         kstring_t str = {0,0,0};
-        ksprintf(&str,"%d:%d-%d",chrom,(uint32_t)bpStart,(uint32_t)bpEnd);
+        if ( chrom==chromX )
+        {
+            // this is not perfect, better would be to have the chr name passed to us
+            ksprintf(&str,"X:%d-%d,chrX:%d-%d",(uint32_t)bpStart,(uint32_t)bpEnd,(uint32_t)bpStart,(uint32_t)bpEnd);
+        }
+        else
+            ksprintf(&str,"%d:%d-%d",chrom,(uint32_t)bpStart,(uint32_t)bpEnd);
         if ( bcf_sr_set_regions(sr, str.s, 0)!=0 )
         {
             cerr << "ERROR: failed to initialize the region:" << str.s;
