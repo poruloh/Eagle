@@ -312,8 +312,8 @@ namespace EAGLE {
       }
       chrom = StringUtils::bcfNameToChrom(chromStr.c_str(), 0, chromX); // checks for range
 
-      if (pbwtIters < 0 || pbwtIters > 3) {
-	cerr << "ERROR: --pbwtIters must be either 0=auto, 1, 2, or 3" << endl;
+      if (pbwtIters < 0 || pbwtIters > 10) {
+	cerr << "ERROR: --pbwtIters must be either 0=auto or <=10" << endl;
 	return false;
       }
 

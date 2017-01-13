@@ -680,6 +680,10 @@ namespace EAGLE {
 			 bool noMapCheck, double cMmax) {
     
     htsFile *fin = hts_open(vcfFile.c_str(), "r");
+    if (fin == NULL) {
+      cerr << "ERROR: Could not open " << vcfFile << " for reading" << endl;
+      exit(1);
+    }
     bcf_hdr_t *hdr = bcf_hdr_read(fin);
     bcf1_t *rec = bcf_init1();
     int mgt = 0, *gt = NULL;
