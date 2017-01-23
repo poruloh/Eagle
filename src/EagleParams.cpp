@@ -81,7 +81,7 @@ namespace EAGLE {
        "tabix-indexed [compressed] VCF/BCF file for reference haplotypes")
       ("vcfTarget", po::value<string>(&vcfTarget),
        "tabix-indexed [compressed] VCF/BCF file for target genotypes")
-      ("vcfOutFormat", po::value<string>(&vcfOutFormat)->default_value("z"),
+      ("vcfOutFormat", po::value<string>(&vcfOutFormat)->default_value("."),
        "b|u|z|v: compressed BCF (b), uncomp BCF (u), compressed VCF (z), uncomp VCF (v)")
       ("noImpMissing", "disable imputation of missing ./. target genotypes")
       ("allowRefAltSwap", "allow swapping of REF/ALT in target vs. ref VCF")
@@ -196,6 +196,12 @@ namespace EAGLE {
 	return false;
       }
 
+      if (vm.count("vcf") + vm.count("vcfRef") + vm.count("vcfTarget") == 0 &&
+	  vcfOutFormat != ".") {
+	cerr << "ERROR: --vcfOutFormat can only be used with vcf input" << endl;
+	return false;
+      }
+
       if (vm.count("bfile")) {
 	string bfile = vm["bfile"].as<string>();
 	famFile = bfile + ".fam";
@@ -263,7 +269,9 @@ namespace EAGLE {
 	if (vcfOutFormat == "b") { vcfOutSuffix = "bcf"; vcfWriteMode = "wb"; }
 	else if (vcfOutFormat == "u") { vcfOutSuffix = "bcf"; vcfWriteMode = "wbu"; }
 	else if (vcfOutFormat == "z") { vcfOutSuffix = "vcf.gz"; vcfWriteMode = "wz"; }
-	else if (vcfOutFormat == "v") { vcfOutSuffix = "vcf"; vcfWriteMode = "w"; }
+	else if (vcfOutFormat == "v" || vcfOutFormat == ".") {
+	  vcfOutSuffix = "vcf"; vcfWriteMode = "w";
+	}
 	else {
 	  cerr << "ERROR: --vcfOutFormat must be one of {b,u,z,v}" << endl;
 	  return false;
