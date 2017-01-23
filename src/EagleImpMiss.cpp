@@ -18,6 +18,7 @@
 
 #include <vector>
 #include <iostream>
+#include <cmath>
 
 #include "HapHedge.hpp"
 #include "MemoryUtils.hpp"

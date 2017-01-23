@@ -151,7 +151,7 @@ namespace FileUtils {
   }
 
   AutoGzIfstream::operator bool() const {
-    return boost_in;
+    return !boost_in.fail();
   }
 
   AutoGzIfstream& AutoGzIfstream::read(char *s, std::streamsize n) {
@@ -209,7 +209,7 @@ namespace FileUtils {
   }
 
   AutoGzOfstream::operator bool() const {
-    return boost_out;
+    return !boost_out.fail();
   }
 
 }
