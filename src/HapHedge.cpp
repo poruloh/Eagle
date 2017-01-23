@@ -143,7 +143,7 @@ namespace EAGLE {
 	for (uint64 h = 0; h <= splits64j.size(); h++) {
 	  // set hom
 	  uint64 homStart = (h == 0 ? 0 : splits64j[h-1]+1);
-	  uint64 homStop = (h == splits64j.size() ? Mseg64*64 : splits64j[h]) - 1;
+	  uint64 homStop = (h == splits64j.size() ? Mseg64*64 : std::max(splits64j[h], 1ULL)) - 1;
 	  int numErrs = 0;
 	  for (uint64 m64 = (homStart>>6); m64 <= (homStop>>6); m64++) {
 	    uint64 mask = -1ULL;
