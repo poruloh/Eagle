@@ -3221,7 +3221,15 @@ namespace EAGLE {
 		       char **argv) const {
 
     htsFile *htsTmp = hts_open(tmpFile.c_str(), "r");
+    if (htsTmp == NULL) {
+      cerr << "ERROR: Could not open temporary file " << tmpFile << endl;
+      exit(1);
+    }
     htsFile *out = hts_open(outFile.c_str(), writeMode.c_str());
+    if (out == NULL) {
+      cerr << "ERROR: Could not write to file " << outFile << endl;
+      exit(1);
+    }
     
     bcf_hdr_t *hdr = bcf_hdr_read(htsTmp);
     bcf_hdr_append_eagle_version(hdr, argc, argv);
