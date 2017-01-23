@@ -136,7 +136,8 @@ void phaseWithRef(EagleParams &params, Timer &timer, double t0, int argc, char *
 	}
 	confs[i-Nref] = eagle.runPBWT
 	  (i, nF1, nF2, params.Kpbwt/(iter<iters?2:1), params.expectIBDcM, params.histFactor,
-	   iter==iters, iter>1, !params.noImpMissing, params.usePS, conPSall[i-Nref]);
+	   iter==iters, iter>1, !params.noImpMissing, params.usePS, conPSall[i-Nref],
+	   params.chrom==params.chromX);
 #ifdef OLD_IMP_MISSING
 	if (!params.noImpMissing) {
 	  Timer tim;
@@ -274,8 +275,6 @@ int main(int argc, char *argv[]) {
 		     params.maxMissingPerSnp, params.maxMissingPerIndiv, params.noMapCheck,
 		     params.cMmax);
 
-  vector <double> invLD64j = genoData.computeInvLD64j(1000);
-  
   if (!params.usePBWT) { // Eagle v1 algorithm
     params.pbwtOnly = false; // should already be false
     params.runStep2 = 1;
@@ -292,6 +291,9 @@ int main(int argc, char *argv[]) {
       params.runStep2 = (genoData.getMseg64() >= 3U); // can't run Step 2 with < 3 SNP segments
   }
 
+  vector <double> invLD64j;
+  if (!params.pbwtOnly) invLD64j = genoData.computeInvLD64j(1000);
+  
   Eagle eagle(genoData.getN(), genoData.getMseg64(), genoData.getGenoBits(),
 	      genoData.getSeg64cMvecs(), genoData.getSeg64logPs(), invLD64j, genoData.getIndivs(),
 	      genoData.getSnps(), params.maskFile, genoData.getIsFlipped64j(), params.pErr,
@@ -462,14 +464,14 @@ int main(int argc, char *argv[]) {
 	  if (b == 1)
 	    for (uint att = 0; att < min(9U, (uint) children.size()); att++) // run on trios
 	      eagle.runPBWT(children[att], nF1s[att], nF2s[att], Kpbwt, params.expectIBDcM,
-			    params.histFactor, runReverse, true, false);
+			    params.histFactor, runReverse, true, false, params.chrom==params.chromX);
 
 	  uint iStart = (b-1)*N/numBatches, iEnd = b*N/numBatches;
 	  cout << endl << "Phasing samples " << (iStart+1) << "-" << iEnd << endl;
 #pragma omp parallel for reduction(+:timeImpMissing) schedule(dynamic, 4)
 	  for (uint i = iStart; i < iEnd; i++) {	
 	    eagle.runPBWT(i, -1, -1, Kpbwt, params.expectIBDcM, params.histFactor, runReverse,
-			  true, true);
+			  true, true, params.chrom==params.chromX);
 #ifdef OLD_IMP_MISSING
 	    Timer tim;
 	    eagle.imputeMissing(hapHedge, i);
@@ -586,7 +588,7 @@ int main(int argc, char *argv[]) {
       eagle.checkTrioErrorRate(i, nF1, nF2);
 #ifdef USE_PBWT
       eagle.runPBWT(i, nF1, nF2, params.Kpbwt, params.expectIBDcM, params.histFactor, true, false,
-		    !params.noImpMissing);
+		    !params.noImpMissing, params.chrom==params.chromX);
 #else
       timeMN2 += params.iter == 2 ? eagle.findLongHapMatches(i, nF1, nF2, params.iter)
 	: eagle.runHMM(i, nF1, nF2, params.iter,

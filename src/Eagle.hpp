@@ -173,10 +173,10 @@ namespace EAGLE {
     double runHMM(uint64 n0, uint64 nF1, uint64 nF2, int iter, uint beamWidth, uint maxHapStates);
     std::vector <bool> computeRefIsMono(const std::vector <uint> &bestHaps) const;
     float runPBWT(uint64 n0, uint64 nF1, uint64 nF2, int Kpbwt, double cMexpect, double histFactor,
-		  bool runReverse, bool useTargetHaps, bool impMissing);
+		  bool runReverse, bool useTargetHaps, bool impMissing, bool isChrX);
     float runPBWT(uint64 n0, uint64 nF1, uint64 nF2, int Kpbwt, double cMexpect, double histFactor,
 		  bool runReverse, bool useTargetHaps, bool impMissing, int usePS,
-		  const std::vector < std::pair <int, int> > &conPS);
+		  const std::vector < std::pair <int, int> > &conPS, bool isChrX);
     void imputeMissing(const HapHedge &hapHedge, uint64 n0);
     void writePhaseConfs(const std::string &tmpPhaseFile) const;
     void readPhaseConfs(const std::string &tmpPhaseFile);

@@ -105,15 +105,16 @@ namespace EAGLE {
   }
 
   float Eagle::runPBWT(uint64 n0, uint64 nF1, uint64 nF2, int Kpbwt, double cMexpect,
-		       double histFactor, bool runReverse, bool useTargetHaps, bool impMissing) {
+		       double histFactor, bool runReverse, bool useTargetHaps, bool impMissing,
+		       bool isChrX) {
     vector < pair <int, int> > noConPS;
     return runPBWT(n0, nF1, nF2, Kpbwt, cMexpect, histFactor, runReverse, useTargetHaps,
-		   impMissing, 0, noConPS);
+		   impMissing, 0, noConPS, isChrX);
   }
 
   float Eagle::runPBWT(uint64 n0, uint64 nF1, uint64 nF2, int Kpbwt, double cMexpect,
 		       double histFactor, bool runReverse, bool useTargetHaps, bool impMissing,
-		       int usePS, const vector < pair <int, int> > &conPS) {
+		       int usePS, const vector < pair <int, int> > &conPS, bool isChrX) {
     Timer timer;
     
     vector <uint> m64jInds(Mseg64*64+1);
@@ -212,11 +213,11 @@ namespace EAGLE {
     splitGenos.push_back(0); // pad on right with 0 (to match hapBitsT)
 
     // check for 0 or 1 het (warn)
-    if (hets64j.size() <= 1) {
+    if (!isChrX && hets64j.size() <= 1) {
       cerr << "WARNING: Sample " << n0-Nref+1 << " (1-indexed) has a het count of "
 	   << hets64j.size() << endl;
     }
-
+    
     // compute recombination probabilities
     vector <double> cMcoords(splits64j.size()+2);
     for (uint64 s = 0; s <= splits64j.size(); s++) {
