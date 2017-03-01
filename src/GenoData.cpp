@@ -594,7 +594,7 @@ namespace EAGLE {
 	}
 	else {
 	  if (numSnpsFailedQC < 5)
-	    cout << "Filtering snp " << snpsPreQC[mbed].ID << ": "
+	    cout << "Filtering snp " << snpsPreQC[m].ID << ": "
 		 << snpsPreQC[m].miss << " missing" << endl;
 	  numSnpsFailedQC++;
 	}
