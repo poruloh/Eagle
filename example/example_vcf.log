@@ -1,13 +1,13 @@
                       +-----------------------------+
                       |                             |
-                      |   Eagle v2.3                |
-                      |   July 22, 2016             |
+                      |   Eagle v2.3.1              |
+                      |   March 3, 2017             |
                       |   Po-Ru Loh                 |
                       |                             |
                       +-----------------------------+
 
 Copyright (C) 2015-2016 Harvard University.
-Distributed under the GNU GPLv3 open source license.
+Distributed under the GNU GPLv3+ open source license.
 
 Command line options:
 
@@ -39,25 +39,25 @@ Setting --histFactor=1.00
 
 BEGINNING STEP 1
 
-Time for step 1: 0.375713
-Time for step 1 MN^2: 0.0244864
+Time for step 1: 0.383094
+Time for step 1 MN^2: 0.024787
 
-Making hard calls (time: 0.028863)
+Making hard calls (time: 0.0283229)
 
 
 BEGINNING STEP 2
 
 BATCH 1 OF 1
 Building hash tables
-.................................................................. (time: 0.0508139)
+.................................................................. (time: 0.0526478)
 
 Phasing samples 1-379
-Time for phasing batch: 0.437996
+Time for phasing batch: 0.469969
 
-Making hard calls (time: 0.029588)
+Making hard calls (time: 0.029753)
 
-Time for step 2: 0.51841
-Time for step 2 MN^2: 0.0594165
+Time for step 2: 0.552398
+Time for step 2 MN^2: 0.0597794
 
 
 BEGINNING STEP 3 (PBWT ITERS)
@@ -70,108 +70,108 @@ BEGINNING PBWT ITER 1
 BATCH 1 OF 10
 
 Phasing samples 1-37
-Time for phasing batch: 1.77567
+Time for phasing batch: 1.77488
 
 BATCH 2 OF 10
 
 Phasing samples 38-75
-Time for phasing batch: 1.64262
+Time for phasing batch: 1.69304
 
 BATCH 3 OF 10
 
 Phasing samples 76-113
-Time for phasing batch: 1.71332
+Time for phasing batch: 1.74526
 
 BATCH 4 OF 10
 
 Phasing samples 114-151
-Time for phasing batch: 1.61786
+Time for phasing batch: 1.64103
 
 BATCH 5 OF 10
 
 Phasing samples 152-189
-Time for phasing batch: 1.6091
+Time for phasing batch: 1.66061
 
 BATCH 6 OF 10
 
 Phasing samples 190-227
-Time for phasing batch: 1.6461
+Time for phasing batch: 1.66104
 
 BATCH 7 OF 10
 
 Phasing samples 228-265
-Time for phasing batch: 1.651
+Time for phasing batch: 1.6719
 
 BATCH 8 OF 10
 
 Phasing samples 266-303
-Time for phasing batch: 1.58484
+Time for phasing batch: 1.58273
 
 BATCH 9 OF 10
 
 Phasing samples 304-341
-Time for phasing batch: 1.59481
+Time for phasing batch: 1.63833
 
 BATCH 10 OF 10
 
 Phasing samples 342-379
-Time for phasing batch: 1.63671
+Time for phasing batch: 1.6582
 
-Time for PBWT iter 1: 16.4721
+Time for PBWT iter 1: 16.727
 
 BEGINNING PBWT ITER 2
 
 BATCH 1 OF 10
 
 Phasing samples 1-37
-Time for phasing batch: 2.72875
+Time for phasing batch: 2.75391
 
 BATCH 2 OF 10
 
 Phasing samples 38-75
-Time for phasing batch: 2.59217
+Time for phasing batch: 2.66628
 
 BATCH 3 OF 10
 
 Phasing samples 76-113
-Time for phasing batch: 2.72183
+Time for phasing batch: 2.74627
 
 BATCH 4 OF 10
 
 Phasing samples 114-151
-Time for phasing batch: 2.57471
+Time for phasing batch: 2.55569
 
 BATCH 5 OF 10
 
 Phasing samples 152-189
-Time for phasing batch: 2.5283
+Time for phasing batch: 2.56301
 
 BATCH 6 OF 10
 
 Phasing samples 190-227
-Time for phasing batch: 2.64632
+Time for phasing batch: 2.63885
 
 BATCH 7 OF 10
 
 Phasing samples 228-265
-Time for phasing batch: 2.63781
+Time for phasing batch: 2.61097
 
 BATCH 8 OF 10
 
 Phasing samples 266-303
-Time for phasing batch: 2.52006
+Time for phasing batch: 2.51258
 
 BATCH 9 OF 10
 
 Phasing samples 304-341
-Time for phasing batch: 2.53771
+Time for phasing batch: 2.57989
 
 BATCH 10 OF 10
 
 Phasing samples 342-379
-Time for phasing batch: 2.51691
+Time for phasing batch: 2.57872
 
-Time for PBWT iter 2: 26.0046
-Writing vcf.gz output to phased.vcf.gz
-Time for writing output: 0.331217
-Total elapsed time for analysis = 52.9965 sec
+Time for PBWT iter 2: 26.2062
+Writing vcf output to phased.vcf
+Time for writing output: 0.168121
+Total elapsed time for analysis = 53.6103 sec

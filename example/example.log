@@ -1,13 +1,13 @@
                       +-----------------------------+
                       |                             |
-                      |   Eagle v2.3                |
-                      |   July 22, 2016             |
+                      |   Eagle v2.3.1              |
+                      |   March 3, 2017             |
                       |   Po-Ru Loh                 |
                       |                             |
                       +-----------------------------+
 
 Copyright (C) 2015-2016 Harvard University.
-Distributed under the GNU GPLv3 open source license.
+Distributed under the GNU GPLv3+ open source license.
 
 Command line options:
 
@@ -56,25 +56,25 @@ Setting --histFactor=1.00
 
 BEGINNING STEP 1
 
-Time for step 1: 0.373152
-Time for step 1 MN^2: 0.0242926
+Time for step 1: 0.380579
+Time for step 1 MN^2: 0.024638
 
-Making hard calls (time: 0.0283859)
+Making hard calls (time: 0.0283101)
 
 
 BEGINNING STEP 2
 
 BATCH 1 OF 1
 Building hash tables
-.................................................................. (time: 0.0523882)
+.................................................................. (time: 0.0659139)
 
 Phasing samples 1-379
-Time for phasing batch: 0.449098
+Time for phasing batch: 0.466222
 
-Making hard calls (time: 0.029567)
+Making hard calls (time: 0.029881)
 
-Time for step 2: 0.531062
-Time for step 2 MN^2: 0.0591508
+Time for step 2: 0.562044
+Time for step 2 MN^2: 0.0596148
 
 
 BEGINNING STEP 3 (PBWT ITERS)
@@ -87,108 +87,108 @@ BEGINNING PBWT ITER 1
 BATCH 1 OF 10
 
 Phasing samples 1-37
-Time for phasing batch: 1.75458
+Time for phasing batch: 1.84304
 
 BATCH 2 OF 10
 
 Phasing samples 38-75
-Time for phasing batch: 1.59901
+Time for phasing batch: 1.67975
 
 BATCH 3 OF 10
 
 Phasing samples 76-113
-Time for phasing batch: 1.69437
+Time for phasing batch: 1.79137
 
 BATCH 4 OF 10
 
 Phasing samples 114-151
-Time for phasing batch: 1.62289
+Time for phasing batch: 1.71214
 
 BATCH 5 OF 10
 
 Phasing samples 152-189
-Time for phasing batch: 1.59901
+Time for phasing batch: 1.62954
 
 BATCH 6 OF 10
 
 Phasing samples 190-227
-Time for phasing batch: 1.63321
+Time for phasing batch: 1.67016
 
 BATCH 7 OF 10
 
 Phasing samples 228-265
-Time for phasing batch: 1.63894
+Time for phasing batch: 1.66139
 
 BATCH 8 OF 10
 
 Phasing samples 266-303
-Time for phasing batch: 1.57722
+Time for phasing batch: 1.6077
 
 BATCH 9 OF 10
 
 Phasing samples 304-341
-Time for phasing batch: 1.56258
+Time for phasing batch: 1.63602
 
 BATCH 10 OF 10
 
 Phasing samples 342-379
-Time for phasing batch: 1.63269
+Time for phasing batch: 1.69574
 
-Time for PBWT iter 1: 16.3145
+Time for PBWT iter 1: 16.9269
 
 BEGINNING PBWT ITER 2
 
 BATCH 1 OF 10
 
 Phasing samples 1-37
-Time for phasing batch: 2.73515
+Time for phasing batch: 2.81822
 
 BATCH 2 OF 10
 
 Phasing samples 38-75
-Time for phasing batch: 2.58695
+Time for phasing batch: 2.59811
 
 BATCH 3 OF 10
 
 Phasing samples 76-113
-Time for phasing batch: 2.70714
+Time for phasing batch: 2.79582
 
 BATCH 4 OF 10
 
 Phasing samples 114-151
-Time for phasing batch: 2.54992
+Time for phasing batch: 2.55964
 
 BATCH 5 OF 10
 
 Phasing samples 152-189
-Time for phasing batch: 2.51631
+Time for phasing batch: 2.70656
 
 BATCH 6 OF 10
 
 Phasing samples 190-227
-Time for phasing batch: 2.62562
+Time for phasing batch: 2.66884
 
 BATCH 7 OF 10
 
 Phasing samples 228-265
-Time for phasing batch: 2.60083
+Time for phasing batch: 2.66954
 
 BATCH 8 OF 10
 
 Phasing samples 266-303
-Time for phasing batch: 2.4503
+Time for phasing batch: 2.51312
 
 BATCH 9 OF 10
 
 Phasing samples 304-341
-Time for phasing batch: 2.54366
+Time for phasing batch: 2.58987
 
 BATCH 10 OF 10
 
 Phasing samples 342-379
-Time for phasing batch: 2.56976
+Time for phasing batch: 2.608
 
-Time for PBWT iter 2: 25.8857
+Time for PBWT iter 2: 26.5278
 Writing .haps.gz and .sample output
-Time for writing output: 0.370972
-Total elapsed time for analysis = 43.6733 sec
+Time for writing output: 0.354415
+Total elapsed time for analysis = 44.9045 sec

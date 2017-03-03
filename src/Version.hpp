@@ -19,7 +19,7 @@
 #ifndef VERSION_HPP
 #define VERSION_HPP
 
-const char EAGLE_VERSION[] = "2.3a";
-const char EAGLE_VERSION_DATE[] = "September 30, 2016";
+const char EAGLE_VERSION[] = "2.3.1";
+const char EAGLE_VERSION_DATE[] = "March 3, 2017";
 
 #endif

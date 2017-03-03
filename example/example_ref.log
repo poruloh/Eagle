@@ -1,13 +1,13 @@
                       +-----------------------------+
                       |                             |
-                      |   Eagle v2.3                |
-                      |   July 22, 2016             |
+                      |   Eagle v2.3.1              |
+                      |   March 3, 2017             |
                       |   Po-Ru Loh                 |
                       |                             |
                       +-----------------------------+
 
 Copyright (C) 2015-2016 Harvard University.
-Distributed under the GNU GPLv3 open source license.
+Distributed under the GNU GPLv3+ open source license.
 
 Command line options:
 
@@ -29,10 +29,11 @@ Target samples: Ntarget = 8
 [W::vcf_parse] INFO 'EX_TARGET' is not defined in the header, assuming Type=String
 SNPs to analyze: M = 430 SNPs in both target and reference
 
-SNPs ignored: 0 SNPs in target but not reference
+SNPs ignored: 215 SNPs in target but not reference
+              --> WARNING: Check REF/ALT agreement between target and ref <--
               215 SNPs in reference but not target
-              0 multi-allelic SNPs
-              0 monomorphic SNPs
+              0 multi-allelic SNPs in target
+              0 monomorphic SNPs in target
 
 Missing rate in target genotypes: 0.00116279
 
@@ -57,15 +58,15 @@ PHASING ITER 1 OF 1
 
 Phasing target samples
 ................................................................................
-Time for phasing iter 1: 0.23367
-Writing vcf.gz output to target.phased.vcf.gz
+Time for phasing iter 1: 0.236171
+Writing vcf output to target.phased.vcf
 [W::vcf_parse] INFO 'AC' is not defined in the header, assuming Type=String
 [W::vcf_parse] INFO 'AN' is not defined in the header, assuming Type=String
 [W::vcf_parse] INFO 'DP' is not defined in the header, assuming Type=String
 [W::vcf_parse] INFO 'AFR_AF' is not defined in the header, assuming Type=String
 [W::vcf_parse] INFO 'EX_TARGET' is not defined in the header, assuming Type=String
-Time for writing output: 0.028584
-Total elapsed time for analysis = 9.43616 sec
+Time for writing output: 0.051106
+Total elapsed time for analysis = 9.22206 sec
 
 Mean phase confidence of each target individual:
 ID	PHASE_CONFIDENCE
