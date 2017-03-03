@@ -56,8 +56,14 @@ namespace Genetics {
     int chr0 = 0, bp0 = 0; double gen0 = 0;
     int chr, bp; double rate, gen;
     while (fin >> chr >> bp >> rate >> gen) {
-      if (chr == chr0)
+      if (chr == chr0) {
+	if (gen<gen0 || bp<bp0) {
+	  cerr << "ERROR: Genetic map contains out-of-order row:" << endl;
+	  cerr << "       " << chr << " " << bp << " " << rate << " " << gen << endl;
+	  exit(1);
+	}
 	chrBpToRateGen[make_pair(chr, bp)] = make_pair((gen-gen0)/(1e-6*(bp-bp0)), gen);
+      }
       chr0 = chr; bp0 = bp; gen0 = gen;
     }
     chrBpToRateGen[make_pair(chr, bp+1e9)] = make_pair(1.0, gen+1e3); // sentinel at end
