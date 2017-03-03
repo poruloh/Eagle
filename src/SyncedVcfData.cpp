@@ -45,7 +45,7 @@ namespace EAGLE {
   void process_ref_genotypes(int nsmpl, int ngt, int32_t *gt, bool allowHaploid, bool refAltSwap,
 			     vector <bool> &hapsRef, int &numMissing, int &numUnphased, uint &w) {
     numMissing = numUnphased = 0;
-    if (ngt != 2*nsmpl) {
+    if (ngt != 2*nsmpl && !(ngt==nsmpl && allowHaploid)) {
       cerr << "ERROR: ref ploidy != 2 (ngt != 2*nsmpl): ngt="
 	   << ngt << ", nsmpl=" << nsmpl << endl;
       exit(1);
@@ -85,6 +85,7 @@ namespace EAGLE {
 	      }
 	    }
 	  }
+	if (ploidy==1) haps[1] = haps[0];
 	if (missing) {
 	  haps[0] = haps[1] = 0; // set both alleles to REF allele
 	  numMissing++;
@@ -106,7 +107,7 @@ namespace EAGLE {
   void process_target_genotypes(int nsmpl, int ngt, int32_t *gt, bool allowHaploid,
 				vector <uchar> &genosTarget, int &numMissing) {
     numMissing = 0;
-    if (ngt != 2*nsmpl) {
+    if (ngt != 2*nsmpl && !(ngt==nsmpl && allowHaploid)) {
       cerr << "ERROR: target ploidy != 2 (ngt != 2*nsmpl): ngt="
 	   << ngt << ", nsmpl=" << nsmpl << endl;
       exit(1);
@@ -153,6 +154,7 @@ namespace EAGLE {
 	  g = 9;
 	  numMissing++;
 	}
+    else if (ploidy==1) g *= 2;   // encode as diploid homozygote
 	genosTarget.push_back(g);
       }
   }
