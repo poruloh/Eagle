@@ -238,7 +238,8 @@ namespace EAGLE {
     cout << "Target samples: Ntarget = " << Ntarget << endl;
 
     M = 0;
-    uint MtargetOnly = 0, MrefOnly = 0, MmultiAllelic = 0, Mmonomorphic = 0;
+    uint MtargetOnly = 0, MrefOnly = 0, MmultiAllelicTgt = 0, MmonomorphicTgt = 0,
+      MmultiAllelicRef = 0, MmonomorphicRef = 0;
     uint MwithMissingRef = 0, MwithUnphasedRef = 0, MnotInRegion = 0, MnotOnChrom = 0;
     uint MrefAltError = 0, numRefAltSwaps = 0;
     uint64 GmissingRef = 0, GunphasedRef = 0, GmissingTarget = 0;
@@ -254,11 +255,16 @@ namespace EAGLE {
 	bcf1_t *tgt = bcf_sr_get_line(sr, 1);
 	if ( !ref ) {
 	  //fprintf(stderr, "onlyT .. %s:%d\n", bcf_seqname(tgt_hdr, tgt), tgt->pos+1);
-	  MtargetOnly++;
+	  bcf_unpack(tgt, BCF_UN_STR); // unpack thru ALT
+	  if (strcmp(tgt->d.allele[1], ".") != 0) // report if polymorphic in target
+	    MtargetOnly++;
 	  continue;
 	}
 	if ( !tgt ) {
 	  //fprintf(stderr, "onlyR .. %s:%d\n", bcf_seqname(ref_hdr, ref), ref->pos+1);
+	  bcf_unpack(ref, BCF_UN_STR); // unpack thru ALT
+	  if (strcmp(ref->d.allele[1], ".") != 0) // report if polymorphic in ref
+	    MtargetOnly++;
 	  MrefOnly++;
 	  continue;
 	}
@@ -267,19 +273,23 @@ namespace EAGLE {
 	// filter out multi-allelic and monomorphic markers
 	int ntgt_gt = bcf_get_genotypes(tgt_hdr, tgt, &tgt_gt, &mtgt_gt);
 	if (tgt->n_allele > 2) {
-	  MmultiAllelic++;
+	  MmultiAllelicTgt++;
 	  continue;
 	}
 	if (tgt->n_allele < 2) {
-	  Mmonomorphic++;
+	  MmonomorphicTgt++;
 	  continue;
 	}
 
 	bool refAltSwap = false;
 
         if (allowRefAltSwap) { // perform further error-checking
-	  if (tgt->n_allele != 2 || ref->n_allele != 2) {
-	    MrefAltError++;
+	  if (ref->n_allele > 2) {
+	    MmultiAllelicRef++;
+	    continue;
+	  }
+	  if (ref->n_allele < 2) {
+	    MmonomorphicRef++;
 	    continue;
 	  }
 	  bcf_unpack(tgt, BCF_UN_STR); // unpack thru ALT
@@ -383,8 +393,12 @@ namespace EAGLE {
     if (MnotInRegion)
       cout << "              " << MnotInRegion << " SNPs not in selected region (+ flanks)"
 	   << endl;
-    cout << "              " << MmultiAllelic << " multi-allelic SNPs" << endl;
-    cout << "              " << Mmonomorphic << " monomorphic SNPs" << endl;
+    cout << "              " << MmultiAllelicTgt << " multi-allelic SNPs in target" << endl;
+    cout << "              " << MmonomorphicTgt << " monomorphic SNPs in target" << endl;
+    if (MmultiAllelicRef)
+      cout << "              " << MmultiAllelicRef << " SNPs biallelic in target but multi-allelic in ref" << endl;
+    if (MmonomorphicRef)
+      cout << "              " << MmonomorphicRef << " SNPs biallelic in target but monomorphic in ref" << endl;
     if (MrefAltError)
       cout << "              " << MrefAltError << " SNPs with REF/ALT matching errors" << endl;
     cout << endl;
