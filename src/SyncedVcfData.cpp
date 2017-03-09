@@ -168,7 +168,8 @@ namespace EAGLE {
     vector < pair <int, int> > chrBps;
 
     bcf_srs_t *sr = bcf_sr_init();
-    sr->require_index = 1;
+    bcf_sr_set_opt(sr, BCF_SR_PAIR_LOGIC, BCF_SR_PAIR_BOTH_REF);
+    bcf_sr_set_opt(sr, BCF_SR_REQUIRE_IDX);
 
     if ( chrom!=0 )
     {
@@ -187,17 +188,6 @@ namespace EAGLE {
         }
         free(str.s);
     }
-
-    // By default, the synced reader requires that CHR, POS and ALT are the same
-    // in both files. If this is too strict and SNP/indel/all lines with the same
-    // position should be considered as matching, uncomment:
-    //
-    //      sr->collapse = COLLAPSE_SNPS|COLLAPSE_INDELS;
-    //
-    // See also examples in bcftools/vcfisec etc.
-
-    if (allowRefAltSwap)
-      sr->collapse = COLLAPSE_SNPS;
 
     if (!bcf_sr_add_reader(sr, vcfRef.c_str())) {
       cerr << "ERROR: Could not open " << vcfRef << " for reading: " << bcf_sr_strerror(sr->errnum)
@@ -276,10 +266,19 @@ namespace EAGLE {
 	  MmultiAllelicTgt++;
 	  continue;
 	}
-	if (tgt->n_allele < 2) {
-	  MmonomorphicTgt++;
-	  continue;
-	}
+    if (ref->n_allele==1)
+    {
+        // drop monomorphic reference markers
+        MmonomorphicRef++;
+        continue;
+    }
+
+    // preserve monomorphic markers if biallelic in the reference panel
+    if (tgt->n_allele < 2)
+    {
+        MmonomorphicTgt++;
+        bcf_update_alleles(tgt_hdr, tgt, (const char**)ref->d.allele,ref->n_allele);
+    }
 
 	bool refAltSwap = false;
 
@@ -288,12 +287,6 @@ namespace EAGLE {
 	    MmultiAllelicRef++;
 	    continue;
 	  }
-	  if (ref->n_allele < 2) {
-	    MmonomorphicRef++;
-	    continue;
-	  }
-	  bcf_unpack(tgt, BCF_UN_STR); // unpack thru ALT
-	  bcf_unpack(ref, BCF_UN_STR); // unpack thru ALT
 	  /*
 	  printf("tgt REF=%s, ALT=%s   ref REF=%s, ALT=%s\n", tgt->d.allele[0], tgt->d.allele[1],
 		 ref->d.allele[0], ref->d.allele[1]);
