@@ -228,7 +228,7 @@ namespace EAGLE {
     cout << "Target samples: Ntarget = " << Ntarget << endl;
 
     M = 0;
-    uint MtargetOnly = 0, MrefOnly = 0, MmultiAllelicTgt = 0, MmonomorphicTgt = 0,
+    uint MtargetOnly = 0, MrefOnly = 0, MmultiAllelicTgt = 0,
       MmultiAllelicRef = 0, MmonomorphicRef = 0;
     uint MwithMissingRef = 0, MwithUnphasedRef = 0, MnotInRegion = 0, MnotOnChrom = 0;
     uint MrefAltError = 0, numRefAltSwaps = 0;
@@ -276,7 +276,6 @@ namespace EAGLE {
     // preserve monomorphic markers if biallelic in the reference panel
     if (tgt->n_allele < 2)
     {
-        MmonomorphicTgt++;
         bcf_update_alleles(tgt_hdr, tgt, (const char**)ref->d.allele,ref->n_allele);
     }
 
@@ -387,7 +386,6 @@ namespace EAGLE {
       cout << "              " << MnotInRegion << " SNPs not in selected region (+ flanks)"
 	   << endl;
     cout << "              " << MmultiAllelicTgt << " multi-allelic SNPs in target" << endl;
-    cout << "              " << MmonomorphicTgt << " monomorphic SNPs in target" << endl;
     if (MmultiAllelicRef)
       cout << "              " << MmultiAllelicRef << " SNPs biallelic in target but multi-allelic in ref" << endl;
     if (MmonomorphicRef)
