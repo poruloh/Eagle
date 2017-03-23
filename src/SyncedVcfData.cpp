@@ -254,8 +254,7 @@ namespace EAGLE {
 	  //fprintf(stderr, "onlyR .. %s:%d\n", bcf_seqname(ref_hdr, ref), ref->pos+1);
 	  bcf_unpack(ref, BCF_UN_STR); // unpack thru ALT
 	  if (strcmp(ref->d.allele[1], ".") != 0) // report if polymorphic in ref
-	    MtargetOnly++;
-	  MrefOnly++;
+	    MrefOnly++;
 	  continue;
 	}
 	//fprintf(stderr, "match .. %s:%d\n", bcf_seqname(ref_hdr, ref), ref->pos+1);
