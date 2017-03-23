@@ -268,10 +268,10 @@ namespace EAGLE {
 	}
 	if (vcfOutFormat == "b") { vcfOutSuffix = "bcf"; vcfWriteMode = "wb"; }
 	else if (vcfOutFormat == "u") { vcfOutSuffix = "bcf"; vcfWriteMode = "wbu"; }
-	else if (vcfOutFormat == "z") { vcfOutSuffix = "vcf.gz"; vcfWriteMode = "wz"; }
-	else if (vcfOutFormat == "v" || vcfOutFormat == ".") {
-	  vcfOutSuffix = "vcf"; vcfWriteMode = "w";
+	else if (vcfOutFormat == "z" || vcfOutFormat == ".") {
+	  vcfOutSuffix = "vcf.gz"; vcfWriteMode = "wz";
 	}
+	else if (vcfOutFormat == "v") { vcfOutSuffix = "vcf"; vcfWriteMode = "w"; }
 	else {
 	  cerr << "ERROR: --vcfOutFormat must be one of {b,u,z,v}" << endl;
 	  return false;
