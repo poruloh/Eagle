@@ -7,7 +7,7 @@
 LBLAS = -lopenblas # alternatively -llapack (just need sgemm_)
 BLAS_DIR = /opt/openblas/0.2.14/lib
 BOOST_INSTALL_DIR = /home/pl88/boost_1_58_0/install
-HTSLIB_DIR = /groups/price/poru/external_software/htslib/htslib-1.3
+HTSLIB_DIR = /groups/price/poru/external_software/htslib/htslib-1.4
 
 
 ### these paths are used only for static linking
