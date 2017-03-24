@@ -163,7 +163,8 @@ namespace EAGLE {
   (const string &vcfRef, const string &vcfTarget, bool allowRefAltSwap, int chrom, int chromX,
    double bpStart, double bpEnd, vector <bool> &hapsRef, vector <uchar> &genosTarget,
    const string &tmpFile, const string &writeMode, int usePS,
-   vector < vector < pair <int, int> > > &conPSall) {
+   vector < vector < pair <int, int> > > &conPSall, bool outputUnphased,
+   vector <bool> &isTmpPhased) {
 
     vector < pair <int, int> > chrBps;
 
@@ -248,6 +249,7 @@ namespace EAGLE {
 	  bcf_unpack(tgt, BCF_UN_STR); // unpack thru ALT
 	  if (strcmp(tgt->d.allele[1], ".") != 0) // report if polymorphic in target
 	    MtargetOnly++;
+	  if (outputUnphased) { bcf_write(out, tgt_hdr, tgt); isTmpPhased.push_back(false); }
 	  continue;
 	}
 	if ( !tgt ) {
@@ -263,12 +265,14 @@ namespace EAGLE {
 	int ntgt_gt = bcf_get_genotypes(tgt_hdr, tgt, &tgt_gt, &mtgt_gt);
 	if (tgt->n_allele > 2) {
 	  MmultiAllelicTgt++;
+	  if (outputUnphased) { bcf_write(out, tgt_hdr, tgt); isTmpPhased.push_back(false); }
 	  continue;
 	}
     if (ref->n_allele==1)
     {
         // drop monomorphic reference markers
         MmonomorphicRef++;
+	if (outputUnphased) { bcf_write(out, tgt_hdr, tgt); isTmpPhased.push_back(false); }
         continue;
     }
 
@@ -283,6 +287,7 @@ namespace EAGLE {
         if (allowRefAltSwap) { // perform further error-checking
 	  if (ref->n_allele > 2) {
 	    MmultiAllelicRef++;
+	    if (outputUnphased) { bcf_write(out, tgt_hdr, tgt); isTmpPhased.push_back(false); }
 	    continue;
 	  }
 	  /*
@@ -300,6 +305,7 @@ namespace EAGLE {
 	  }
 	  else {
 	    MrefAltError++;
+	    if (outputUnphased) { bcf_write(out, tgt_hdr, tgt); isTmpPhased.push_back(false); }
 	    continue;	    
 	  }
 	}
@@ -357,6 +363,7 @@ namespace EAGLE {
 
 	// print the record
 	bcf_write(out, tgt_hdr, tgt);
+	isTmpPhased.push_back(true);
       }
 
     bcf_sr_destroy(sr);
@@ -409,6 +416,13 @@ namespace EAGLE {
     }
     cout << "Missing rate in target genotypes: " << GmissingTarget / (double) M / Ntarget << endl;
     cout << endl;
+
+    int numTmpUnphased = 0;
+    for (uint j = 0; j < isTmpPhased.size(); j++)
+      numTmpUnphased += !isTmpPhased[j];
+    if (numTmpUnphased)
+      cout << "SNPs excluded from phasing that will be kept in output (unphased): "
+	   << numTmpUnphased << endl << endl;
 
     if (M <= 1U) {
       cerr << endl << "ERROR: Target and ref have too few matching SNPs (M = " << M << ")" << endl;
@@ -483,14 +497,15 @@ namespace EAGLE {
 			       int chrom, int chromX, double bpStart, double bpEnd,
 			       const string &geneticMapFile, double cMmax, const string &tmpFile,
 			       const string &writeMode, int usePS,
-			       vector < vector < pair <int, int> > > &conPSall, double &snpRate) {
+			       vector < vector < pair <int, int> > > &conPSall, double &snpRate,
+			       bool outputUnphased, vector <bool> &isTmpPhased) {
 
     // perform synced read
     vector <bool> hapsRef;     // M*2*Nref
     vector <uchar> genosTarget; // M*Ntarget
     vector < pair <int, int> > chrBps = 
       processVcfs(vcfRef, vcfTarget, allowRefAltSwap, chrom, chromX, bpStart, bpEnd, hapsRef,
-		  genosTarget, tmpFile, writeMode, usePS, conPSall);
+		  genosTarget, tmpFile, writeMode, usePS, conPSall, outputUnphased, isTmpPhased);
 
     // interpolate genetic coordinates
     vector <double> cMs = processMap(chrBps, geneticMapFile);

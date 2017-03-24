@@ -66,11 +66,12 @@ void phaseWithRef(EagleParams &params, Timer &timer, double t0, int argc, char *
   string tmpFile = params.outPrefix + ".unphased." + params.vcfOutSuffix;
   string outFile = params.outPrefix + "." + params.vcfOutSuffix;
   vector < vector < pair <int, int> > > conPSall; double snpRate;
+  vector <bool> isTmpPhased;
   SyncedVcfData vcfData(params.vcfRef, params.vcfTarget, params.allowRefAltSwap, params.chrom,
 			params.chromX, params.bpStart-params.bpFlanking,
 			params.bpEnd+params.bpFlanking, params.geneticMapFile,
 			params.cMmax==0 ? 1 : params.cMmax, tmpFile, params.vcfWriteMode,
-			params.usePS, conPSall, snpRate);
+			params.usePS, conPSall, snpRate, params.outputUnphased, isTmpPhased);
 
   Eagle eagle(vcfData.getNref(), vcfData.getNtarget(), vcfData.getMseg64(),
 	      vcfData.getGenoBits(), vcfData.getSeg64cMvecs(), params.pErr);
@@ -185,7 +186,7 @@ void phaseWithRef(EagleParams &params, Timer &timer, double t0, int argc, char *
 
   timer.update_time();
   cout << "Writing " << params.vcfOutSuffix << " output to " << outFile << endl;
-  eagle.writeVcf(tmpFile, outFile, params.chromX, params.bpStart, params.bpEnd,
+  eagle.writeVcf(tmpFile, isTmpPhased, outFile, params.chromX, params.bpStart, params.bpEnd,
 		 params.vcfWriteMode, params.noImpMissing, argc, argv);
   cout << "Time for writing output: " << timer.update_time() << endl;
 

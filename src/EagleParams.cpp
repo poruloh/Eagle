@@ -85,6 +85,7 @@ namespace EAGLE {
        "b|u|z|v: compressed BCF (b), uncomp BCF (u), compressed VCF (z), uncomp VCF (v)")
       ("noImpMissing", "disable imputation of missing ./. target genotypes")
       ("allowRefAltSwap", "allow swapping of REF/ALT in target vs. ref VCF")
+      ("outputUnphased", "output unphased sites (target-only, multi-allelic, etc.)")
       ;
 
     po::options_description bothModes("Region selection options");
@@ -227,6 +228,7 @@ namespace EAGLE {
       noMapCheck = vm.count("noMapCheck");
       noImpMissing = vm.count("noImpMissing");
       allowRefAltSwap = vm.count("allowRefAltSwap");
+      outputUnphased = vm.count("outputUnphased");
 
       if (vm.count("vcfRef") || vm.count("vcfTarget") || vm.count("vcf")) { // VCF mode
 	if (vm.count("vcf")) { // non-ref mode

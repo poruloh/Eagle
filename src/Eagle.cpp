@@ -3216,9 +3216,9 @@ namespace EAGLE {
     bcf_hdr_sync(hdr);
   }
 
-  void Eagle::writeVcf(const string &tmpFile, const string &outFile, int chromX, double bpStart,
-		       double bpEnd, const string &writeMode, bool noImpMissing, int argc,
-		       char **argv) const {
+  void Eagle::writeVcf(const string &tmpFile, const vector <bool> &isTmpPhased,
+		       const string &outFile, int chromX, double bpStart, double bpEnd,
+		       const string &writeMode, bool noImpMissing, int argc, char **argv) const {
 
     htsFile *htsTmp = hts_open(tmpFile.c_str(), "r");
     if (htsTmp == NULL) {
@@ -3242,7 +3242,23 @@ namespace EAGLE {
 
     vector <int> mostRecentPloidy(N-Nref, 2);
 
+    int tmpLineNum = -1; // index in tmp file (corresponding to isTmpPhased)
     while (bcf_read(htsTmp, hdr, rec) >= 0) {
+      tmpLineNum++;
+      if (!isTmpPhased[tmpLineNum]) { // site was not phased; remove phase information and output
+	int bp = rec->pos+1;
+	if (bpStart <= bp && bp <= bpEnd) { // check if within output region
+	  int ntgt_gt = bcf_get_genotypes(hdr, rec, &tgt_gt, &mtgt_gt);
+	  for (int k = 0; k < ntgt_gt; k++)
+	    if (tgt_gt[k] != bcf_int32_vector_end && !bcf_gt_is_missing(tgt_gt[k])) {
+	      int idx = bcf_gt_allele(tgt_gt[k]); // allele index
+	      tgt_gt[k] = bcf_gt_unphased(idx); // convert allele index to bcf value (unphased)
+	    }
+	  bcf_update_genotypes(hdr, rec, tgt_gt, ntgt_gt);
+	  bcf_write(out, hdr, rec);
+	}
+	continue;
+      }
 
       int chrom = StringUtils::bcfNameToChrom(bcf_hdr_id2name(hdr, rec->rid), 1, chromX);
 

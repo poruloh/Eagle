@@ -8,7 +8,7 @@ LBLAS = -lopenblas # alternatively -llapack (just need sgemm_)
 BLAS_DIR = /opt/openblas/0.2.14/lib
 BOOST_INSTALL_DIR = /home/pl88/boost_1_58_0/install
 HTSLIB_DIR = /groups/price/poru/external_software/htslib/htslib-1.4
-
+### NOTE: to reduce dependencies from htslib, configure htslib with: ./configure --disable-bz2 --disable-lzma --disable-plugins --disable-libcurl --disable-gcs --disable-s3
 
 ### these paths are used only for static linking
 ZLIB_STATIC_DIR = /opt/zlib-1.2.8/lib # probably unnecessary on most systems

@@ -185,9 +185,9 @@ namespace EAGLE {
     void outputSE(const std::vector <uint> &children, const std::vector <uint> &nF1s,
 		  const std::vector <uint> &nF2s, int step) const;
     void writeHapsGzSample(const std::string &prefix) const;
-    void writeVcf(const std::string &tmpFile, const std::string &outFile, int chromX,
-		  double bpStart, double bpEnd, const std::string &writeMode, bool noImpMissing,
-		  int argc, char**argv) const;
+    void writeVcf(const std::string &tmpFile, const std::vector <bool> &isTmpPhased,
+		  const std::string &outFile, int chromX, double bpStart, double bpEnd,
+		  const std::string &writeMode, bool noImpMissing, int argc, char**argv) const;
     void writeVcfNonRef(const std::string &vcfFile, const std::string &outFile, int inputChrom,
 			int chromX, double bpStart, double bpEnd, const std::string &writeMode,
 			int argc, char **argv) const;

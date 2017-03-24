@@ -43,7 +43,8 @@ namespace EAGLE {
     (const std::string &vcfRef, const std::string &vcfTarget, bool allowRefAltSwap, int chrom,
      int chromX, double bpStart, double bpEnd, std::vector <bool> &hapsRef,
      std::vector <uchar> &genosTarget, const std::string &tmpFile, const std::string &writeMode,
-     int usePS, std::vector < std::vector < std::pair <int, int> > > &conPSall);
+     int usePS, std::vector < std::vector < std::pair <int, int> > > &conPSall,
+     bool outputUnphased, std::vector <bool> &isTmpPhased);
     std::vector <double> processMap(std::vector < std::pair <int, int> > &chrBps,
 				    const std::string &geneticMapFile);
     void buildGenoBits(const std::vector <bool> &hapsRef, const std::vector <uchar> &genosTarget,
@@ -59,7 +60,8 @@ namespace EAGLE {
 		  int chrom, int chromX, double bpStart, double bpEnd,
 		  const std::string &geneticMapFile, double cMmax, const std::string &tmpFile,
 		  const std::string &writeMode, int usePS,
-		  std::vector < std::vector < std::pair <int, int> > > &conPSall, double &snpRate);
+		  std::vector < std::vector < std::pair <int, int> > > &conPSall, double &snpRate,
+		  bool outputUnphased, std::vector <bool> &isTmpPhased);
 
     ~SyncedVcfData();
 
