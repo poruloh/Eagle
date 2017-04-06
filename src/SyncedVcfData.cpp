@@ -247,7 +247,7 @@ namespace EAGLE {
 	if ( !ref ) {
 	  //fprintf(stderr, "onlyT .. %s:%d\n", bcf_seqname(tgt_hdr, tgt), tgt->pos+1);
 	  bcf_unpack(tgt, BCF_UN_STR); // unpack thru ALT
-	  if (strcmp(tgt->d.allele[1], ".") != 0) // report if polymorphic in target
+	  if ( tgt->n_allele>1 && strcmp(tgt->d.allele[1], ".") != 0) // report if polymorphic in target
 	    MtargetOnly++;
 	  if (outputUnphased) { bcf_write(out, tgt_hdr, tgt); isTmpPhased.push_back(false); }
 	  continue;
@@ -255,7 +255,7 @@ namespace EAGLE {
 	if ( !tgt ) {
 	  //fprintf(stderr, "onlyR .. %s:%d\n", bcf_seqname(ref_hdr, ref), ref->pos+1);
 	  bcf_unpack(ref, BCF_UN_STR); // unpack thru ALT
-	  if (strcmp(ref->d.allele[1], ".") != 0) // report if polymorphic in ref
+	  if ( ref->n_allele>1 && strcmp(ref->d.allele[1], ".") != 0) // report if polymorphic in ref
 	    MrefOnly++;
 	  continue;
 	}
