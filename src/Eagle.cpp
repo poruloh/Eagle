@@ -3263,68 +3263,73 @@ namespace EAGLE {
       int chrom = StringUtils::bcfNameToChrom(bcf_hdr_id2name(hdr, rec->rid), 1, chromX);
 
       int ntgt_gt = bcf_get_genotypes(hdr, rec, &tgt_gt, &mtgt_gt);
-      
+
       int bp = rec->pos+1;
       if (bpStart <= bp && bp <= bpEnd) { // check if within output region
-	for (int i = 0; i < (int) (N-Nref); i++) {
-	  int ploidy = 2;
-	  int *ptr = tgt_gt + i*ploidy;
+	if (bcf_hdr_nsamples(hdr) == ntgt_gt) { // site is all-haploid
+	  bcf_write(out, hdr, rec);
+	}
+	else {
+	  for (int i = 0; i < (int) (N-Nref); i++) {
+	    int ploidy = 2;
+	    int *ptr = tgt_gt + i*ploidy;
 
-	  if (chrom != chromX || (bcf_gt_is_missing(ptr[0]) && mostRecentPloidy[i] == 2)
-	      || ptr[1] != bcf_int32_vector_end) { // diploid... be careful about missing '.'
-	    mostRecentPloidy[i] = 2;
-	    bool missing = false;
-	    int minIdx = 1000, maxIdx = 0;
-	    for (int j = 0; j < ploidy; j++) {
-	      if ( bcf_gt_is_missing(ptr[j]) ) { // missing allele
-		missing = true;
+	    if (chrom != chromX || (bcf_gt_is_missing(ptr[0]) && mostRecentPloidy[i] == 2)
+		|| ptr[1] != bcf_int32_vector_end) { // diploid... be careful about missing '.'
+	      mostRecentPloidy[i] = 2;
+	      bool missing = false;
+	      int minIdx = 1000, maxIdx = 0;
+	      for (int j = 0; j < ploidy; j++) {
+		if ( bcf_gt_is_missing(ptr[j]) ) { // missing allele
+		  missing = true;
+		}
+		else {
+		  int idx = bcf_gt_allele(ptr[j]); // allele index
+		  minIdx = std::min(minIdx, idx);
+		  maxIdx = std::max(maxIdx, idx);
+		}
 	      }
-	      else {
-		int idx = bcf_gt_allele(ptr[j]); // allele index
-		minIdx = std::min(minIdx, idx);
-		maxIdx = std::max(maxIdx, idx);
-	      }
-	    }
 
-	    if (!missing && minIdx == maxIdx) { // hom => same allele
-	      ptr[0] = ptr[1] = bcf_gt_phased(minIdx);
-	    }
-	    else if (!missing && minIdx > 0) { // ALT1/ALT2 het => don't phase
-	      ptr[0] = ptr[1] = bcf_gt_missing;
-	    }
-	    else { // REF/ALT* het => phase as called by Eagle
-	      if (missing && noImpMissing) { // don't call alleles
+	      if (!missing && minIdx == maxIdx) { // hom => same allele
+		ptr[0] = ptr[1] = bcf_gt_phased(minIdx);
+	      }
+	      else if (!missing && minIdx > 0) { // ALT1/ALT2 het => don't phase
 		ptr[0] = ptr[1] = bcf_gt_missing;
 	      }
-	      else {
-		for (int j = 0; j < ploidy; j++) {
-		  uint64 nTargetHap = 2*i + j;
-		  int altIdx = missing ? 1 : maxIdx;
-		  int hapBit = (tmpHaploBitsT[nTargetHap*Mseg64+(m64j/64)]>>(m64j&63))&1;
-		  if (isFlipped64j[m64j]) hapBit = !hapBit;
-		  int idx = hapBit ? altIdx : 0;
-		  ptr[j] = bcf_gt_phased(idx); // convert allele index to bcf value (phased)
+	      else { // REF/ALT* het => phase as called by Eagle
+		if (missing && noImpMissing) { // don't call alleles
+		  ptr[0] = ptr[1] = bcf_gt_missing;
+		}
+		else {
+		  for (int j = 0; j < ploidy; j++) {
+		    uint64 nTargetHap = 2*i + j;
+		    int altIdx = missing ? 1 : maxIdx;
+		    int hapBit = (tmpHaploBitsT[nTargetHap*Mseg64+(m64j/64)]>>(m64j&63))&1;
+		    if (isFlipped64j[m64j]) hapBit = !hapBit;
+		    int idx = hapBit ? altIdx : 0;
+		    ptr[j] = bcf_gt_phased(idx); // convert allele index to bcf value (phased)
+		  }
 		}
 	      }
 	    }
-	  }
-	  else { // haploid
-	    mostRecentPloidy[i] = 1;
-	    if ( bcf_gt_is_missing(ptr[0]) && !noImpMissing ) { // missing allele
-	      int j = 0;
-	      uint64 nTargetHap = 2*i + j;
-	      int altIdx = 1;
-	      int hapBit = (tmpHaploBitsT[nTargetHap*Mseg64+(m64j/64)]>>(m64j&63))&1;
-	      if (isFlipped64j[m64j]) hapBit = !hapBit;
-	      int idx = hapBit ? altIdx : 0;
-	      ptr[j] = bcf_gt_phased(idx); // convert allele index to bcf value (phased)
+	    else { // haploid
+	      mostRecentPloidy[i] = 1;
+	      if ( bcf_gt_is_missing(ptr[0]) && !noImpMissing ) { // missing allele
+		int j = 0;
+		uint64 nTargetHap = 2*i + j;
+		int altIdx = 1;
+		int hapBit = (tmpHaploBitsT[nTargetHap*Mseg64+(m64j/64)]>>(m64j&63))&1;
+		if (isFlipped64j[m64j]) hapBit = !hapBit;
+		int idx = hapBit ? altIdx : 0;
+		ptr[j] = bcf_gt_phased(idx); // convert allele index to bcf value (phased)
+	      }
 	    }
 	  }
+
+	  bcf_update_genotypes(hdr, rec, tgt_gt, ntgt_gt);
+
+	  bcf_write(out, hdr, rec);
 	}
-
-	bcf_update_genotypes(hdr, rec, tgt_gt, ntgt_gt);
-
-	bcf_write(out, hdr, rec);
       }
 
       m64j++;
