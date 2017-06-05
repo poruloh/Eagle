@@ -1,7 +1,7 @@
                       +-----------------------------+
                       |                             |
-                      |   Eagle v2.3.3              |
-                      |   May 25, 2017              |
+                      |   Eagle v2.3.4              |
+                      |   June 5, 2017              |
                       |   Po-Ru Loh                 |
                       |                             |
                       +-----------------------------+
@@ -56,15 +56,15 @@ PHASING ITER 1 OF 1
 
 Phasing target samples
 ................................................................................
-Time for phasing iter 1: 0.241276
+Time for phasing iter 1: 0.259136
 Writing vcf.gz output to target.phased.vcf.gz
 [W::vcf_parse] INFO 'AC' is not defined in the header, assuming Type=String
 [W::vcf_parse] INFO 'AN' is not defined in the header, assuming Type=String
 [W::vcf_parse] INFO 'DP' is not defined in the header, assuming Type=String
 [W::vcf_parse] INFO 'AFR_AF' is not defined in the header, assuming Type=String
 [W::vcf_parse] INFO 'EX_TARGET' is not defined in the header, assuming Type=String
-Time for writing output: 0.0281219
-Total elapsed time for analysis = 9.75993 sec
+Time for writing output: 0.0443978
+Total elapsed time for analysis = 10.1217 sec
 
 Mean phase confidence of each target individual:
 ID	PHASE_CONFIDENCE

@@ -1,7 +1,7 @@
                       +-----------------------------+
                       |                             |
-                      |   Eagle v2.3.3              |
-                      |   May 25, 2017              |
+                      |   Eagle v2.3.4              |
+                      |   June 5, 2017              |
                       |   Po-Ru Loh                 |
                       |                             |
                       +-----------------------------+
@@ -39,25 +39,25 @@ Setting --histFactor=1.00
 
 BEGINNING STEP 1
 
-Time for step 1: 0.374943
-Time for step 1 MN^2: 0.0242708
+Time for step 1: 0.382344
+Time for step 1 MN^2: 0.024531
 
-Making hard calls (time: 0.0280461)
+Making hard calls (time: 0.0279789)
 
 
 BEGINNING STEP 2
 
 BATCH 1 OF 1
 Building hash tables
-.................................................................. (time: 0.051429)
+.................................................................. (time: 0.0512731)
 
 Phasing samples 1-379
-Time for phasing batch: 0.436978
+Time for phasing batch: 0.44787
 
-Making hard calls (time: 0.029475)
+Making hard calls (time: 0.0295429)
 
-Time for step 2: 0.517896
-Time for step 2 MN^2: 0.0591031
+Time for step 2: 0.528698
+Time for step 2 MN^2: 0.0594785
 
 
 BEGINNING STEP 3 (PBWT ITERS)
@@ -70,108 +70,108 @@ BEGINNING PBWT ITER 1
 BATCH 1 OF 10
 
 Phasing samples 1-37
-Time for phasing batch: 1.77302
+Time for phasing batch: 1.78389
 
 BATCH 2 OF 10
 
 Phasing samples 38-75
-Time for phasing batch: 1.62636
+Time for phasing batch: 1.66108
 
 BATCH 3 OF 10
 
 Phasing samples 76-113
-Time for phasing batch: 1.70022
+Time for phasing batch: 1.72659
 
 BATCH 4 OF 10
 
 Phasing samples 114-151
-Time for phasing batch: 1.58293
+Time for phasing batch: 1.6426
 
 BATCH 5 OF 10
 
 Phasing samples 152-189
-Time for phasing batch: 1.59915
+Time for phasing batch: 1.629
 
 BATCH 6 OF 10
 
 Phasing samples 190-227
-Time for phasing batch: 1.62067
+Time for phasing batch: 1.63717
 
 BATCH 7 OF 10
 
 Phasing samples 228-265
-Time for phasing batch: 1.6408
+Time for phasing batch: 1.66667
 
 BATCH 8 OF 10
 
 Phasing samples 266-303
-Time for phasing batch: 1.56538
+Time for phasing batch: 1.5801
 
 BATCH 9 OF 10
 
 Phasing samples 304-341
-Time for phasing batch: 1.56008
+Time for phasing batch: 1.60071
 
 BATCH 10 OF 10
 
 Phasing samples 342-379
-Time for phasing batch: 1.57379
+Time for phasing batch: 1.60565
 
-Time for PBWT iter 1: 16.2424
+Time for PBWT iter 1: 16.5335
 
 BEGINNING PBWT ITER 2
 
 BATCH 1 OF 10
 
 Phasing samples 1-37
-Time for phasing batch: 2.72502
+Time for phasing batch: 2.80026
 
 BATCH 2 OF 10
 
 Phasing samples 38-75
-Time for phasing batch: 2.59978
+Time for phasing batch: 2.68277
 
 BATCH 3 OF 10
 
 Phasing samples 76-113
-Time for phasing batch: 2.70163
+Time for phasing batch: 2.77932
 
 BATCH 4 OF 10
 
 Phasing samples 114-151
-Time for phasing batch: 2.56947
+Time for phasing batch: 2.58917
 
 BATCH 5 OF 10
 
 Phasing samples 152-189
-Time for phasing batch: 2.47636
+Time for phasing batch: 2.58681
 
 BATCH 6 OF 10
 
 Phasing samples 190-227
-Time for phasing batch: 2.57057
+Time for phasing batch: 2.64623
 
 BATCH 7 OF 10
 
 Phasing samples 228-265
-Time for phasing batch: 2.58506
+Time for phasing batch: 2.67757
 
 BATCH 8 OF 10
 
 Phasing samples 266-303
-Time for phasing batch: 2.47201
+Time for phasing batch: 2.53453
 
 BATCH 9 OF 10
 
 Phasing samples 304-341
-Time for phasing batch: 2.4714
+Time for phasing batch: 2.59236
 
 BATCH 10 OF 10
 
 Phasing samples 342-379
-Time for phasing batch: 2.48793
+Time for phasing batch: 2.606
 
-Time for PBWT iter 2: 25.6593
+Time for PBWT iter 2: 26.4951
 Writing vcf.gz output to phased.vcf.gz
-Time for writing output: 0.316963
-Total elapsed time for analysis = 52.6607 sec
+Time for writing output: 0.362386
+Total elapsed time for analysis = 54.0173 sec

@@ -619,7 +619,7 @@ namespace EAGLE {
 	    int minErr = 1<<30;
 	    vector <double> cMdiffs; vector <uint64> revStarts;
 
-	    for (uint64 m64j = m64jPrev; m64j < m64jNext; m64j++) {
+	    for (uint64 m64j = m64jPrev; m64j == m64jPrev || m64j < m64jNext; m64j++) {
 	      if (m64j != m64jPrev) { // update err counts
 		if ((genos64j[m64j] == 0 || genos64j[m64j] == 2) &&
 		    (((haploBitsT[refSeqFwd*Mseg64+m64j/64]>>(m64j&63))&1) != genos64j[m64j]/2))
