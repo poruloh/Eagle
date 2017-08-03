@@ -3333,7 +3333,7 @@ namespace EAGLE {
       }
 
       m64j++;
-      if ((m64j&63) == seg64cMvecs[m64j/64].size())
+      if (m64j != Mseg64*64 && (m64j&63) == seg64cMvecs[m64j/64].size())
 	m64j = (m64j + 64ULL) & ~63ULL; // move to next segment
     }
 
