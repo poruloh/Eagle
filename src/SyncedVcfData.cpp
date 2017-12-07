@@ -159,8 +159,9 @@ namespace EAGLE {
       }
   }
 
+  // fills in chrom if chrom==0
   vector < pair <int, int> > SyncedVcfData::processVcfs
-  (const string &vcfRef, const string &vcfTarget, bool allowRefAltSwap, int chrom, int chromX,
+  (const string &vcfRef, const string &vcfTarget, bool allowRefAltSwap, int &chrom, int chromX,
    double bpStart, double bpEnd, vector <bool> &hapsRef, vector <uchar> &genosTarget,
    const string &tmpFile, const string &writeMode, int usePS,
    vector < vector < pair <int, int> > > &conPSall, bool outputUnphased,
@@ -492,9 +493,10 @@ namespace EAGLE {
    * reads ref+target vcf data
    * writes target[isec] to tmpFile
    * fills in cM coordinates and seg64cMvecs, genoBits
+   * fills in chrom if chrom==0
    */
   SyncedVcfData::SyncedVcfData(const string &vcfRef, const string &vcfTarget, bool allowRefAltSwap,
-			       int chrom, int chromX, double bpStart, double bpEnd,
+			       int &chrom, int chromX, double bpStart, double bpEnd,
 			       const string &geneticMapFile, double cMmax, const string &tmpFile,
 			       const string &writeMode, int usePS,
 			       vector < vector < pair <int, int> > > &conPSall, double &snpRate,

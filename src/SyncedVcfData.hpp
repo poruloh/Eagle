@@ -40,7 +40,7 @@ namespace EAGLE {
     std::vector <std::string> targetIDs;
 
     std::vector < std::pair <int, int> > processVcfs
-    (const std::string &vcfRef, const std::string &vcfTarget, bool allowRefAltSwap, int chrom,
+    (const std::string &vcfRef, const std::string &vcfTarget, bool allowRefAltSwap, int &chrom,
      int chromX, double bpStart, double bpEnd, std::vector <bool> &hapsRef,
      std::vector <uchar> &genosTarget, const std::string &tmpFile, const std::string &writeMode,
      int usePS, std::vector < std::vector < std::pair <int, int> > > &conPSall,
@@ -57,7 +57,7 @@ namespace EAGLE {
      * fills in cM coordinates and seg64cMvecs, genoBits
      */
     SyncedVcfData(const std::string &vcfRef, const std::string &vcfTarget, bool allowRefAltSwap,
-		  int chrom, int chromX, double bpStart, double bpEnd,
+		  int &chrom, int chromX, double bpStart, double bpEnd,
 		  const std::string &geneticMapFile, double cMmax, const std::string &tmpFile,
 		  const std::string &writeMode, int usePS,
 		  std::vector < std::vector < std::pair <int, int> > > &conPSall, double &snpRate,
