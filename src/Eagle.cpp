@@ -3218,7 +3218,8 @@ namespace EAGLE {
 
   void Eagle::writeVcf(const string &tmpFile, const vector <bool> &isTmpPhased,
 		       const string &outFile, int chromX, double bpStart, double bpEnd,
-		       const string &writeMode, bool noImpMissing, int argc, char **argv) const {
+		       const string &writeMode, bool noImpMissing, bool keepMissingPloidyX,
+		       int argc, char **argv) const {
 
     htsFile *htsTmp = hts_open(tmpFile.c_str(), "r");
     if (htsTmp == NULL) {
@@ -3273,6 +3274,10 @@ namespace EAGLE {
 	  for (int i = 0; i < (int) (N-Nref); i++) {
 	    int ploidy = 2;
 	    int *ptr = tgt_gt + i*ploidy;
+
+	    // --keepMissingPloidyX: assume missing genotypes in target VCF have correct ploidy
+	    if (chrom == chromX && keepMissingPloidyX && bcf_gt_is_missing(ptr[0]))
+	      mostRecentPloidy[i] = (ptr[1] == bcf_int32_vector_end ? 1 : 2);
 
 	    if (chrom != chromX || (bcf_gt_is_missing(ptr[0]) && mostRecentPloidy[i] == 2)
 		|| ptr[1] != bcf_int32_vector_end) { // diploid... be careful about missing '.'
@@ -3355,7 +3360,7 @@ namespace EAGLE {
   // - does not delete tmpFile (now vcfFile with original input)
   void Eagle::writeVcfNonRef(const string &vcfFile, const string &outFile, int inputChrom,
 			     int chromX, double bpStart, double bpEnd, const string &writeMode,
-			     int argc, char **argv) const {
+			     bool keepMissingPloidyX, int argc, char **argv) const {
 
     htsFile *htsIn = hts_open(vcfFile.c_str(), "r");
     htsFile *out = hts_open(outFile.c_str(), writeMode.c_str());
@@ -3387,6 +3392,10 @@ namespace EAGLE {
 	for (int i = 0; i < (int) (N-Nref); i++) {
 	  int ploidy = 2;
 	  int *ptr = tgt_gt + i*ploidy;
+
+	  // --keepMissingPloidyX: assume missing genotypes in target VCF have correct ploidy
+	  if (chrom == chromX && keepMissingPloidyX && bcf_gt_is_missing(ptr[0]))
+	    mostRecentPloidy[i] = (ptr[1] == bcf_int32_vector_end ? 1 : 2);
 
 	  if (chrom != chromX || (bcf_gt_is_missing(ptr[0]) && mostRecentPloidy[i] == 2)
 	      || ptr[1] != bcf_int32_vector_end) { // diploid... be careful about missing '.'

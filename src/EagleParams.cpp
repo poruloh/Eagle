@@ -86,6 +86,7 @@ namespace EAGLE {
       ("noImpMissing", "disable imputation of missing ./. target genotypes")
       ("allowRefAltSwap", "allow swapping of REF/ALT in target vs. ref VCF")
       ("outputUnphased", "output unphased sites (target-only, multi-allelic, etc.)")
+      ("keepMissingPloidyX", "assume missing genotypes have correct ploidy (.=haploid, ./.=diploid)")
       ;
 
     po::options_description bothModes("Region selection options");
@@ -229,6 +230,7 @@ namespace EAGLE {
       noImpMissing = vm.count("noImpMissing");
       allowRefAltSwap = vm.count("allowRefAltSwap");
       outputUnphased = vm.count("outputUnphased");
+      keepMissingPloidyX = vm.count("keepMissingPloidyX");
 
       if (vm.count("vcfRef") || vm.count("vcfTarget") || vm.count("vcf")) { // VCF mode
 	if (vm.count("vcf")) { // non-ref mode
@@ -253,6 +255,9 @@ namespace EAGLE {
 	  if (pbwtIters > 1 && noImpMissing) {
 	    cerr << "ERROR: --pbwtIters cannot be greater than 1 if --noImpMissing is set" << endl;
 	    return false;
+	  }
+	  if (vcfRef.substr(vcfRef.length()-4) != string(".bcf")) {
+	    cerr << "WARNING: --vcfRef does not end in '.bcf'; BCF input is fastest" << endl;
 	  }
 	}
 

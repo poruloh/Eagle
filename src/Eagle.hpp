@@ -187,10 +187,11 @@ namespace EAGLE {
     void writeHapsGzSample(const std::string &prefix) const;
     void writeVcf(const std::string &tmpFile, const std::vector <bool> &isTmpPhased,
 		  const std::string &outFile, int chromX, double bpStart, double bpEnd,
-		  const std::string &writeMode, bool noImpMissing, int argc, char**argv) const;
+		  const std::string &writeMode, bool noImpMissing, bool keepMissingPloidyX,
+		  int argc, char**argv) const;
     void writeVcfNonRef(const std::string &vcfFile, const std::string &outFile, int inputChrom,
 			int chromX, double bpStart, double bpEnd, const std::string &writeMode,
-			int argc, char **argv) const;
+			bool keepMissingPloidyX, int argc, char **argv) const;
     void makeHardCalls(uint64 n0start, uint64 n0end, uint seed);
     void initRefIter(int refIter);
     void buildHashTables(int iter, int batch, int seed);

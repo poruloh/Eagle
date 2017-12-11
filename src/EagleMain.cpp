@@ -72,6 +72,7 @@ void phaseWithRef(EagleParams &params, Timer &timer, double t0, int argc, char *
 			params.bpEnd+params.bpFlanking, params.geneticMapFile,
 			params.cMmax==0 ? 1 : params.cMmax, tmpFile, params.vcfWriteMode,
 			params.usePS, conPSall, snpRate, params.outputUnphased, isTmpPhased);
+  cout << endl << "Time for reading input: " << timer.update_time() << "sec" << endl << endl;
 
   Eagle eagle(vcfData.getNref(), vcfData.getNtarget(), vcfData.getMseg64(),
 	      vcfData.getGenoBits(), vcfData.getSeg64cMvecs(), params.pErr);
@@ -187,7 +188,7 @@ void phaseWithRef(EagleParams &params, Timer &timer, double t0, int argc, char *
   timer.update_time();
   cout << "Writing " << params.vcfOutSuffix << " output to " << outFile << endl;
   eagle.writeVcf(tmpFile, isTmpPhased, outFile, params.chromX, params.bpStart, params.bpEnd,
-		 params.vcfWriteMode, params.noImpMissing, argc, argv);
+		 params.vcfWriteMode, params.noImpMissing, params.keepMissingPloidyX, argc, argv);
   cout << "Time for writing output: " << timer.update_time() << endl;
 
   cout << "Total elapsed time for analysis = " << (timer.get_time()-t0) << " sec" << endl;
@@ -499,7 +500,8 @@ int main(int argc, char *argv[]) {
       string outFile = params.outPrefix + "." + params.vcfOutSuffix;
       cout << "Writing " << params.vcfOutSuffix << " output to " << outFile << endl;
       eagle.writeVcfNonRef(params.vcfFile, outFile, params.chrom, params.chromX, params.bpStart,
-			   params.bpEnd, params.vcfWriteMode, argc, argv);
+			   params.bpEnd, params.vcfWriteMode, params.keepMissingPloidyX, argc,
+			   argv);
     }
     else {
       cout << "Writing .haps.gz and .sample output" << endl; timer.update_time();
