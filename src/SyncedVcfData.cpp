@@ -182,7 +182,7 @@ namespace EAGLE {
             ksprintf(&str,"X:%d-%d,chrX:%d-%d",(uint32_t)bpStart,(uint32_t)bpEnd,(uint32_t)bpStart,(uint32_t)bpEnd);
         }
         else
-            ksprintf(&str,"%d:%d-%d",chrom,(uint32_t)bpStart,(uint32_t)bpEnd);
+            ksprintf(&str,"%d:%d-%d,chr%d:%d-%d",chrom,(uint32_t)bpStart,(uint32_t)bpEnd,chrom,(uint32_t)bpStart,(uint32_t)bpEnd);
         if ( bcf_sr_set_regions(sr, str.s, 0)!=0 )
         {
             cerr << "ERROR: failed to initialize the region:" << str.s;
