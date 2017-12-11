@@ -67,8 +67,8 @@ void phaseWithRef(EagleParams &params, Timer &timer, double t0, int argc, char *
   string outFile = params.outPrefix + "." + params.vcfOutSuffix;
   vector < vector < pair <int, int> > > conPSall; double snpRate;
   vector <bool> isTmpPhased;
-  SyncedVcfData vcfData(params.vcfRef, params.vcfTarget, params.allowRefAltSwap, params.chrom,
-			params.chromX, params.bpStart-params.bpFlanking,
+  SyncedVcfData vcfData(params.vcfRef, params.vcfTarget, params.vcfExclude, params.allowRefAltSwap,
+			params.chrom, params.chromX, params.bpStart-params.bpFlanking,
 			params.bpEnd+params.bpFlanking, params.geneticMapFile,
 			params.cMmax==0 ? 1 : params.cMmax, tmpFile, params.vcfWriteMode,
 			params.usePS, conPSall, snpRate, params.outputUnphased, isTmpPhased);

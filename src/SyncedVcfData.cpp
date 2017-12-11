@@ -161,9 +161,9 @@ namespace EAGLE {
 
   // fills in chrom if chrom==0
   vector < pair <int, int> > SyncedVcfData::processVcfs
-  (const string &vcfRef, const string &vcfTarget, bool allowRefAltSwap, int &chrom, int chromX,
-   double bpStart, double bpEnd, vector <bool> &hapsRef, vector <uchar> &genosTarget,
-   const string &tmpFile, const string &writeMode, int usePS,
+  (const string &vcfRef, const string &vcfTarget, const string &vcfExclude, bool allowRefAltSwap,
+   int &chrom, int chromX, double bpStart, double bpEnd, vector <bool> &hapsRef,
+   vector <uchar> &genosTarget, const string &tmpFile, const string &writeMode, int usePS,
    vector < vector < pair <int, int> > > &conPSall, bool outputUnphased,
    vector <bool> &isTmpPhased) {
 
@@ -201,6 +201,12 @@ namespace EAGLE {
 	   << bcf_sr_strerror(sr->errnum) << endl;
       exit(1);
     }
+    bool useExclude = !vcfExclude.empty();
+    if (useExclude && !bcf_sr_add_reader(sr, vcfExclude.c_str())) {
+      cerr << "ERROR: Could not open " << vcfExclude << " for reading: "
+	   << bcf_sr_strerror(sr->errnum) << endl;
+      exit(1);
+    }
 
     bcf_hdr_t *ref_hdr = bcf_sr_get_header(sr, 0);
     bcf_hdr_t *tgt_hdr = bcf_sr_get_header(sr, 1);
@@ -230,7 +236,7 @@ namespace EAGLE {
     cout << "Target samples: Ntarget = " << Ntarget << endl;
 
     M = 0;
-    uint MtargetOnly = 0, MrefOnly = 0, MmultiAllelicTgt = 0,
+    uint Mexclude = 0, MtargetOnly = 0, MrefOnly = 0, MmultiAllelicTgt = 0,
       MmultiAllelicRef = 0, MmonomorphicRef = 0;
     uint MwithMissingRef = 0, MwithUnphasedRef = 0, MnotInRegion = 0, MnotOnChrom = 0;
     uint MrefAltError = 0, numRefAltSwaps = 0;
@@ -245,6 +251,11 @@ namespace EAGLE {
       {
 	bcf1_t *ref = bcf_sr_get_line(sr, 0);
 	bcf1_t *tgt = bcf_sr_get_line(sr, 1);
+	if (useExclude && bcf_sr_get_line(sr, 2)) {
+	  Mexclude++;
+	  if (outputUnphased) { bcf_write(out, tgt_hdr, tgt); isTmpPhased.push_back(false); }
+	  continue;
+	}
 	if ( !ref ) {
 	  //fprintf(stderr, "onlyT .. %s:%d\n", bcf_seqname(tgt_hdr, tgt), tgt->pos+1);
 	  bcf_unpack(tgt, BCF_UN_STR); // unpack thru ALT
@@ -399,6 +410,8 @@ namespace EAGLE {
       cout << "              " << MmonomorphicRef << " SNPs biallelic in target but monomorphic in ref" << endl;
     if (MrefAltError)
       cout << "              " << MrefAltError << " SNPs with REF/ALT matching errors" << endl;
+    if (Mexclude)
+      cout << "              " << Mexclude << " SNPs excluded based on --vcfExclude" << endl;
     cout << endl;
     
     if (MwithMissingRef) {
@@ -495,19 +508,20 @@ namespace EAGLE {
    * fills in cM coordinates and seg64cMvecs, genoBits
    * fills in chrom if chrom==0
    */
-  SyncedVcfData::SyncedVcfData(const string &vcfRef, const string &vcfTarget, bool allowRefAltSwap,
-			       int &chrom, int chromX, double bpStart, double bpEnd,
-			       const string &geneticMapFile, double cMmax, const string &tmpFile,
-			       const string &writeMode, int usePS,
-			       vector < vector < pair <int, int> > > &conPSall, double &snpRate,
-			       bool outputUnphased, vector <bool> &isTmpPhased) {
+  SyncedVcfData::SyncedVcfData
+  (const string &vcfRef, const string &vcfTarget, const string &vcfExclude, bool allowRefAltSwap,
+   int &chrom, int chromX, double bpStart, double bpEnd, const string &geneticMapFile,
+   double cMmax, const string &tmpFile, const string &writeMode, int usePS,
+   vector < vector < pair <int, int> > > &conPSall, double &snpRate, bool outputUnphased,
+   vector <bool> &isTmpPhased) {
 
     // perform synced read
     vector <bool> hapsRef;     // M*2*Nref
     vector <uchar> genosTarget; // M*Ntarget
     vector < pair <int, int> > chrBps = 
-      processVcfs(vcfRef, vcfTarget, allowRefAltSwap, chrom, chromX, bpStart, bpEnd, hapsRef,
-		  genosTarget, tmpFile, writeMode, usePS, conPSall, outputUnphased, isTmpPhased);
+      processVcfs(vcfRef, vcfTarget, vcfExclude, allowRefAltSwap, chrom, chromX, bpStart, bpEnd,
+		  hapsRef, genosTarget, tmpFile, writeMode, usePS, conPSall, outputUnphased,
+		  isTmpPhased);
 
     // interpolate genetic coordinates
     vector <double> cMs = processMap(chrBps, geneticMapFile);

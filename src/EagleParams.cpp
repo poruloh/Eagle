@@ -83,10 +83,13 @@ namespace EAGLE {
        "tabix-indexed [compressed] VCF/BCF file for target genotypes")
       ("vcfOutFormat", po::value<string>(&vcfOutFormat)->default_value("."),
        "b|u|z|v: compressed BCF (b), uncomp BCF (u), compressed VCF (z), uncomp VCF (v)")
-      ("noImpMissing", "disable imputation of missing ./. target genotypes")
+      ("noImpMissing", "disable imputation of missing target genotypes (. or ./.)")
       ("allowRefAltSwap", "allow swapping of REF/ALT in target vs. ref VCF")
       ("outputUnphased", "output unphased sites (target-only, multi-allelic, etc.)")
-      ("keepMissingPloidyX", "assume missing genotypes have correct ploidy (.=haploid, ./.=diploid)")
+      ("keepMissingPloidyX",
+       "assume missing genotypes have correct ploidy (.=haploid, ./.=diploid)")
+      ("vcfExclude", po::value<string>(&vcfExclude),
+       "tabix-indexed [compressed] VCF/BCF file containing variants to exclude from phasing")
       ;
 
     po::options_description bothModes("Region selection options");
@@ -370,6 +373,7 @@ namespace EAGLE {
       FileUtils::requireEmptyOrReadable(bedFile);
       FileUtils::requireEmptyOrReadable(vcfRef);
       FileUtils::requireEmptyOrReadable(vcfTarget);
+      FileUtils::requireEmptyOrReadable(vcfExclude);
       if (geneticMapFile != "USE_BIM") {
 	vector <string> reqHeader;
 	reqHeader.push_back("chr"); reqHeader.push_back("position");
