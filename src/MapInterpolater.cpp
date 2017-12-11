@@ -62,6 +62,16 @@ namespace Genetics {
 	  cerr << "       " << chr << " " << bp << " " << rate << " " << gen << endl;
 	  exit(1);
 	}
+	if (bp<=0) {
+	  cerr << "ERROR: Genetic map positions must be positive:" << endl;
+	  cerr << "       " << chr << " " << bp << " " << rate << " " << gen << endl;
+	  exit(1);
+	}
+	if (bp==bp0) {
+	  cerr << "ERROR: Genetic map contains duplicate position:" << endl;
+	  cerr << "       " << chr << " " << bp << " " << rate << " " << gen << endl;
+	  exit(1);
+	}
 	chrBpToRateGen[make_pair(chr, bp)] = make_pair((gen-gen0)/(1e-6*(bp-bp0)), gen);
       }
       chr0 = chr; bp0 = bp; gen0 = gen;
