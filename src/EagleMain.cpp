@@ -216,7 +216,7 @@ int main(int argc, char *argv[]) {
   cout << "                      +-----------------------------+" << endl;
   cout << endl;
 
-  cout << "Copyright (C) 2015-2016 Harvard University." << endl;
+  cout << "Copyright (C) 2015-2017 Harvard University." << endl;
   cout << "Distributed under the GNU GPLv3+ open source license." << endl << endl;
 
   //cout << "Boost version: " << BOOST_LIB_VERSION << endl;
@@ -286,6 +286,9 @@ int main(int argc, char *argv[]) {
     int bpSpan = genoData.getSnps().back().physpos - genoData.getSnps()[0].physpos;
     double snpsPerMb = genoData.getSnps().size() / (bpSpan*1e-6);
     if (snpsPerMb > 1000) params.pbwtOnly = true;
+
+    if (genoData.getN() > 200000U) params.pbwtOnly = true;
+
     if (params.pbwtOnly) params.runStep2 = 0;
 
     // if --runStep2 hasn't yet been set, SNP density must be low; run Step 2 unless too few chunks
