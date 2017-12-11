@@ -305,7 +305,7 @@ namespace EAGLE {
 	    strcmp(tgt->d.allele[1], ref->d.allele[1]) == 0) {
 	  refAltSwap = false;
 	}
-	else if (allowRefAltSwap && // allow exact swap if --allowRefAltSwap flag is set
+	else if (allowRefAltSwap && bcf_is_snp(tgt) && // allow swap if --allowRefAltSwap is set
 		 strcmp(tgt->d.allele[0], ref->d.allele[1]) == 0 &&
 		 strcmp(tgt->d.allele[1], ref->d.allele[0]) == 0) {
 	  refAltSwap = true;
