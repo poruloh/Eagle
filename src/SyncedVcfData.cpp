@@ -170,7 +170,8 @@ namespace EAGLE {
     vector < pair <int, int> > chrBps;
 
     bcf_srs_t *sr = bcf_sr_init();
-    bcf_sr_set_opt(sr, BCF_SR_PAIR_LOGIC, BCF_SR_PAIR_BOTH_REF);
+    bcf_sr_set_opt(sr, BCF_SR_PAIR_LOGIC,
+		   allowRefAltSwap ? BCF_SR_PAIR_BOTH_REF : BCF_SR_PAIR_EXACT);
     bcf_sr_set_opt(sr, BCF_SR_REQUIRE_IDX);
 
     if ( chrom!=0 )
@@ -273,53 +274,47 @@ namespace EAGLE {
 	}
 	//fprintf(stderr, "match .. %s:%d\n", bcf_seqname(ref_hdr, ref), ref->pos+1);
 
-	// filter out multi-allelic and monomorphic markers
+	// deal with multi-allelic and monomorphic markers
+	// drop multi-allelic target markers
 	int ntgt_gt = bcf_get_genotypes(tgt_hdr, tgt, &tgt_gt, &mtgt_gt);
 	if (tgt->n_allele > 2) {
 	  MmultiAllelicTgt++;
 	  if (outputUnphased) { bcf_write(out, tgt_hdr, tgt); isTmpPhased.push_back(false); }
 	  continue;
 	}
-    if (ref->n_allele==1)
-    {
         // drop monomorphic reference markers
-        MmonomorphicRef++;
-	if (outputUnphased) { bcf_write(out, tgt_hdr, tgt); isTmpPhased.push_back(false); }
-        continue;
-    }
+	if (ref->n_allele==1) {
+	  MmonomorphicRef++;
+	  if (outputUnphased) { bcf_write(out, tgt_hdr, tgt); isTmpPhased.push_back(false); }
+	  continue;
+	}
+	// preserve monomorphic markers if biallelic in the reference panel
+	if (tgt->n_allele < 2) {
+	  bcf_update_alleles(tgt_hdr, tgt, (const char**)ref->d.allele,ref->n_allele);
+	}
+	// drop multi-allelic reference markers
+	if (ref->n_allele > 2) {
+	  MmultiAllelicRef++;
+	  if (outputUnphased) { bcf_write(out, tgt_hdr, tgt); isTmpPhased.push_back(false); }
+	  continue;
+	}
 
-    // preserve monomorphic markers if biallelic in the reference panel
-    if (tgt->n_allele < 2)
-    {
-        bcf_update_alleles(tgt_hdr, tgt, (const char**)ref->d.allele,ref->n_allele);
-    }
-
+	// check for REF/ALT swaps
 	bool refAltSwap = false;
-
-        if (allowRefAltSwap) { // perform further error-checking
-	  if (ref->n_allele > 2) {
-	    MmultiAllelicRef++;
-	    if (outputUnphased) { bcf_write(out, tgt_hdr, tgt); isTmpPhased.push_back(false); }
-	    continue;
-	  }
-	  /*
-	  printf("tgt REF=%s, ALT=%s   ref REF=%s, ALT=%s\n", tgt->d.allele[0], tgt->d.allele[1],
-		 ref->d.allele[0], ref->d.allele[1]);
-	  */
-	  if (strcmp(tgt->d.allele[0], ref->d.allele[0]) == 0 &&
-	      strcmp(tgt->d.allele[1], ref->d.allele[1]) == 0) {
-	    refAltSwap = false;
-	  }
-	  else if (strcmp(tgt->d.allele[0], ref->d.allele[1]) == 0 &&
-		   strcmp(tgt->d.allele[1], ref->d.allele[0]) == 0) {
-	    refAltSwap = true;
-	    numRefAltSwaps++;
-	  }
-	  else {
-	    MrefAltError++;
-	    if (outputUnphased) { bcf_write(out, tgt_hdr, tgt); isTmpPhased.push_back(false); }
-	    continue;	    
-	  }
+	if (strcmp(tgt->d.allele[0], ref->d.allele[0]) == 0 &&
+	    strcmp(tgt->d.allele[1], ref->d.allele[1]) == 0) {
+	  refAltSwap = false;
+	}
+	else if (allowRefAltSwap && // allow exact swap if --allowRefAltSwap flag is set
+		 strcmp(tgt->d.allele[0], ref->d.allele[1]) == 0 &&
+		 strcmp(tgt->d.allele[1], ref->d.allele[0]) == 0) {
+	  refAltSwap = true;
+	  numRefAltSwaps++;
+	}
+	else {
+	  MrefAltError++;
+	  if (outputUnphased) { bcf_write(out, tgt_hdr, tgt); isTmpPhased.push_back(false); }
+	  continue;	    
 	}
 
     // Check the chromosome: if region was requested (chrom is set), synced
@@ -395,7 +390,7 @@ namespace EAGLE {
     cout << endl;
     cout << "SNPs ignored: " << MtargetOnly << " SNPs in target but not reference" << endl;
     if (MtargetOnly > M/10U)
-      cerr << "              --> WARNING: Check REF/ALT agreement between target and ref <--"
+      cerr << "              --> WARNING: Check REF/ALT agreement between target and ref? <--"
 	   << endl;
     cout << "              " << MrefOnly << " SNPs in reference but not target" << endl;
     if (MnotOnChrom)
@@ -409,7 +404,7 @@ namespace EAGLE {
     if (MmonomorphicRef)
       cout << "              " << MmonomorphicRef << " SNPs biallelic in target but monomorphic in ref" << endl;
     if (MrefAltError)
-      cout << "              " << MrefAltError << " SNPs with REF/ALT matching errors" << endl;
+      cout << "              " << MrefAltError << " SNPs with allele mismatches" << endl;
     if (Mexclude)
       cout << "              " << Mexclude << " SNPs excluded based on --vcfExclude" << endl;
     cout << endl;
