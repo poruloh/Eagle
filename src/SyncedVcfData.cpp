@@ -254,7 +254,7 @@ namespace EAGLE {
 	bcf1_t *tgt = bcf_sr_get_line(sr, 1);
 	if (useExclude && bcf_sr_get_line(sr, 2)) {
 	  Mexclude++;
-	  if (outputUnphased) { bcf_write(out, tgt_hdr, tgt); isTmpPhased.push_back(false); }
+	  if (outputUnphased && tgt) { bcf_write(out, tgt_hdr, tgt); isTmpPhased.push_back(false); }
 	  continue;
 	}
 	if ( !ref ) {
