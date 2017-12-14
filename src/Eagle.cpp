@@ -2329,6 +2329,10 @@ namespace EAGLE {
       cerr << "Too few SNP segments for analysis" << endl;
       exit(1);
     }
+    if (Mseg64 > 50000U) {
+      cerr << "Too many SNP segments for analysis: " << Mseg64 << " (max = 50000)" << endl;
+      exit(1);
+    }
 
     uint seed = n0; // for rand_r()
 

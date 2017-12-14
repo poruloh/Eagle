@@ -529,7 +529,7 @@ namespace EAGLE {
       const uint64 m64jNext = t==(int) splits64j.size() ? Mseg64*64 : splits64j[t];
       vector <uint64> miss64j;
       for (uint64 m64j = m64jPrev+1; m64j < m64jNext; m64j++)
-	if (genos64j[m64j] == 3 && impMissing) // missing
+	if (maskSnps64j[m64j] && genos64j[m64j] == 3 && impMissing) // missing
 	  miss64j.push_back(m64j);
 
       // orient each hap pair wrt called phase
@@ -582,8 +582,9 @@ namespace EAGLE {
 
 	// initialize allele dosages
 	int nMiss = miss64j.size();
-	double alleleDoses[nMiss][2];
-	for (int m = 0; m < nMiss; m++) alleleDoses[m][0] = alleleDoses[m][1] = 0;
+	struct DosePair { double d[2]; };
+	vector <DosePair> alleleDoses(nMiss);
+	for (int m = 0; m < nMiss; m++) alleleDoses[m].d[0] = alleleDoses[m].d[1] = 0;
 
 	// process non-ends: call using longer of fwd, rev ref samples
 	double meanLens[2] = {0, 0};
@@ -595,7 +596,7 @@ namespace EAGLE {
 	for (uint k = 0; k < nonEndRefs[fbLong].size(); k++) {
 	  int refSeq = nonEndRefs[fbLong][k];
 	  for (int m = 0; m < nMiss; m++)
-	    alleleDoses[m][(haploBitsT[refSeq*Mseg64+miss64j[m]/64]>>(miss64j[m]&63))&1] += 1;
+	    alleleDoses[m].d[(haploBitsT[refSeq*Mseg64+miss64j[m]/64]>>(miss64j[m]&63))&1] += 1;
 	}
 	  
 	// compute mean lengths including ends=0 for phasing singletons later
@@ -653,9 +654,9 @@ namespace EAGLE {
 		else
 		  break;
 	      }
-	      alleleDoses[m][(haploBitsT[refSeqFwd*Mseg64+miss64j[m]/64]>>(miss64j[m]&63))&1] +=
+	      alleleDoses[m].d[(haploBitsT[refSeqFwd*Mseg64+miss64j[m]/64]>>(miss64j[m]&63))&1] +=
 		cMcum / cMtot;
-	      alleleDoses[m][(haploBitsT[refSeqRev*Mseg64+miss64j[m]/64]>>(miss64j[m]&63))&1] +=
+	      alleleDoses[m].d[(haploBitsT[refSeqRev*Mseg64+miss64j[m]/64]>>(miss64j[m]&63))&1] +=
 		1 - cMcum / cMtot;
 	    }
 	  }
@@ -664,7 +665,7 @@ namespace EAGLE {
 	// make final calls
 	for (int m = 0; m < nMiss; m++) {
 	  uint64 m64 = miss64j[m]/64, j = miss64j[m]&63;
-	  if (alleleDoses[m][0] >= alleleDoses[m][1])
+	  if (alleleDoses[m].d[0] >= alleleDoses[m].d[1])
 	    tmpHaploBitsT[(nTargetHap+h)*Mseg64 + m64] &= ~(1ULL<<j);
 	  else
 	    tmpHaploBitsT[(nTargetHap+h)*Mseg64 + m64] |= 1ULL<<j;
