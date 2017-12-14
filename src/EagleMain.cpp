@@ -72,7 +72,7 @@ void phaseWithRef(EagleParams &params, Timer &timer, double t0, int argc, char *
 			params.bpEnd+params.bpFlanking, params.geneticMapFile,
 			params.cMmax==0 ? 1 : params.cMmax, tmpFile, params.vcfWriteMode,
 			params.usePS, conPSall, snpRate, params.outputUnphased, isTmpPhased);
-  cout << endl << "Time for reading input: " << timer.update_time() << "sec" << endl << endl;
+  cout << endl << "Time for reading input: " << timer.update_time() << " sec" << endl << endl;
 
   Eagle eagle(vcfData.getNref(), vcfData.getNtarget(), vcfData.getMseg64(),
 	      vcfData.getGenoBits(), vcfData.getSeg64cMvecs(), params.pErr);
