@@ -3236,15 +3236,12 @@ namespace EAGLE {
       cerr << "ERROR: Could not write to file " << outFile << endl;
       exit(1);
     }
-    #ifdef _OPENMP
-    // If we're OMP, then get a threadpool for writing equal to
+    // Get a threadpool for writing equal to
     // the maximum number of threads that have been configured.
     htsThreadPool p = {hts_tpool_init(omp_get_max_threads()),
                        0};
     hts_set_thread_pool(out, &p);
     hts_set_thread_pool(htsTmp, &p);
-
-    #endif // _OPENMP
 
     bcf_hdr_t *hdr = bcf_hdr_read(htsTmp);
     bcf_hdr_append_eagle_version(hdr, argc, argv);
@@ -3363,9 +3360,7 @@ namespace EAGLE {
     bcf_hdr_destroy(hdr);
     hts_close(out);
     hts_close(htsTmp);
-    #ifdef _OPENMP
     hts_tpool_destroy(p.pool);
-    #endif // _OPENMP
     remove(tmpFile.c_str());
   }
 
@@ -3381,6 +3376,12 @@ namespace EAGLE {
 
     htsFile *htsIn = hts_open(vcfFile.c_str(), "r");
     htsFile *out = hts_open(outFile.c_str(), writeMode.c_str());
+    // Get a threadpool for writing equal to
+    // the maximum number of threads that have been configured.
+    htsThreadPool p = {hts_tpool_init(omp_get_max_threads()),
+                       0};
+    hts_set_thread_pool(out, &p);
+    hts_set_thread_pool(htsIn, &p);
 
     bcf_hdr_t *hdr = bcf_hdr_read(htsIn);
     bcf_hdr_append_eagle_version(hdr, argc, argv);
@@ -3478,6 +3479,7 @@ namespace EAGLE {
     bcf_hdr_destroy(hdr);
     hts_close(out);
     hts_close(htsIn);
+    hts_tpool_destroy(p.pool);
   }
 
   void Eagle::makeHardCalls(uint64 n0start, uint64 n0end, uint seed) {
