@@ -23,8 +23,11 @@
 #include <algorithm>
 #include <cstring>
 
+#include <htslib/thread_pool.h>
 #include <htslib/vcf.h>
 #include <htslib/synced_bcf_reader.h>
+
+#include "omp.h"
 
 #include "Types.hpp"
 #include "MemoryUtils.hpp"
@@ -100,7 +103,7 @@ namespace EAGLE {
 	  haps[1] = !haps[1];
 	}
 	hapsRef.push_back(haps[0]);
-	hapsRef.push_back(haps[1]);	  
+	hapsRef.push_back(haps[1]);
       }
   }
 
@@ -211,14 +214,16 @@ namespace EAGLE {
 
     bcf_hdr_t *ref_hdr = bcf_sr_get_header(sr, 0);
     bcf_hdr_t *tgt_hdr = bcf_sr_get_header(sr, 1);
-  
+
     // Open VCF for writing, "-" stands for standard output
     //      wbu .. uncompressed BCF
     //      wb  .. compressed BCF
     //      wz  .. compressed VCF
     //      w   .. uncompressed VCF
     htsFile *out = hts_open(tmpFile.c_str(), writeMode.c_str());
-
+    htsThreadPool p = {hts_tpool_init(omp_get_max_threads()),
+                       0};
+    hts_set_thread_pool(out, &p);
     // Print the VCF header
     bcf_hdr_write(out, tgt_hdr);
 
@@ -314,15 +319,15 @@ namespace EAGLE {
 	else {
 	  MrefAltError++;
 	  if (outputUnphased) { bcf_write(out, tgt_hdr, tgt); isTmpPhased.push_back(false); }
-	  continue;	    
+	  continue;
 	}
 
     // Check the chromosome: if region was requested (chrom is set), synced
     // reader already positioned us in the right region. Otherwise, we process
     // only the first chromosome in the file and quit
-    if ( prev_rid<0 ) 
-    { 
-        prev_rid = tgt->rid; 
+    if ( prev_rid<0 )
+    {
+        prev_rid = tgt->rid;
         if ( !chrom ) // learn the human-readable id
         {
             chrom = StringUtils::bcfNameToChrom(bcf_hdr_id2name(tgt_hdr, tgt->rid), 1, chromX);
@@ -374,7 +379,8 @@ namespace EAGLE {
       }
 
     bcf_sr_destroy(sr);
-    hts_close(out);    
+    hts_close(out);
+    hts_tpool_destroy(p.pool);
     free(ref_gt);
     free(tgt_gt);
 
@@ -408,7 +414,7 @@ namespace EAGLE {
     if (Mexclude)
       cout << "              " << Mexclude << " SNPs excluded based on --vcfExclude" << endl;
     cout << endl;
-    
+
     if (MwithMissingRef) {
       cerr << "WARNING: Reference contains missing genotypes (set to reference allele)" << endl;
       cerr << "         Fraction of sites with missing data:  "
@@ -466,7 +472,7 @@ namespace EAGLE {
       snpInds.push_back(m); cMvec.push_back(cMs[m]);
     }
     seg64snpInds.push_back(snpInds); seg64cMvecs.push_back(cMvec);
-    
+
     Mseg64 = seg64snpInds.size();
     cout << "Number of <=(64-SNP, " << cMmax << "cM) segments: " << Mseg64 << endl;
     cout << "Average # SNPs per segment: " << M / Mseg64 << endl;
@@ -497,7 +503,7 @@ namespace EAGLE {
     }
   }
 
-  /**    
+  /**
    * reads ref+target vcf data
    * writes target[isec] to tmpFile
    * fills in cM coordinates and seg64cMvecs, genoBits
@@ -513,7 +519,7 @@ namespace EAGLE {
     // perform synced read
     vector <bool> hapsRef;     // M*2*Nref
     vector <uchar> genosTarget; // M*Ntarget
-    vector < pair <int, int> > chrBps = 
+    vector < pair <int, int> > chrBps =
       processVcfs(vcfRef, vcfTarget, vcfExclude, allowRefAltSwap, chrom, chromX, bpStart, bpEnd,
 		  hapsRef, genosTarget, tmpFile, writeMode, usePS, conPSall, outputUnphased,
 		  isTmpPhased);
