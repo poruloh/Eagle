@@ -262,6 +262,11 @@ namespace EAGLE {
 	  if (vcfRef.substr(vcfRef.length()-4) != string(".bcf")) {
 	    cerr << "WARNING: --vcfRef does not end in '.bcf'; BCF input is fastest" << endl;
 	  }
+	  if (chromStr=="0" && (bpStart>0 || bpEnd<1e9)) {
+	    cerr << "ERROR: --chrom is required when specifying --bpStart or --bpEnd in ref mode"
+		 << endl;
+	    return false;
+	  }
 	}
 
 	// vcf input checks for both ref and non-ref mode
