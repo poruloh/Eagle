@@ -36,6 +36,7 @@
 
 #include "omp.h"
 
+#include <htslib/thread_pool.h>
 #include <htslib/vcf.h>
 
 #include "Types.hpp"
@@ -82,13 +83,13 @@ namespace EAGLE {
     totTicks = 0; extTicks = 0; diphapTicks = 0; lshTicks = 0; lshCheckTicks = 0;
     dpTicks = 0; dpStaticTicks = 0; dpSwitchTicks = 0; dpUpdateTicks = 0; dpSortTicks = 0;
     dpUpdateCalls = 0; blipFixTicks = 0; blipPopTicks = 0; blipVoteTicks = 0; blipLshTicks = 0;
-    
+
     maskSnps64j = ALIGNED_MALLOC_UCHARS(Mseg64*64);
     cMs64j = ALIGNED_MALLOC_DOUBLES(Mseg64*64+1);
     double cMlast = 0;
     for (uint64 m64 = 0; m64 < Mseg64; m64++) {
       for (uint64 j = 0; j < seg64cMvecs[m64].size(); j++) {
-	maskSnps64j[m64*64+j] = 1;      
+	maskSnps64j[m64*64+j] = 1;
 	cMs64j[m64*64+j] = cMlast = seg64cMvecs[m64][j];
       }
       for (uint64 j = seg64cMvecs[m64].size(); j < 64; j++) {
@@ -97,7 +98,7 @@ namespace EAGLE {
       }
     }
     cMs64j[Mseg64*64] = cMlast;
-    
+
     haploBits = ALIGNED_MALLOC_UINT64S(Mseg64*2*N);
     haploBitsT = ALIGNED_MALLOC_UINT64S(2*N*Mseg64);
     segConfs = ALIGNED_MALLOC_UCHARS(2*N*Mseg64);
@@ -134,7 +135,7 @@ namespace EAGLE {
     isFlipped64j(_isFlipped64j), logPerr(log10(_pErr)) {
 
     init();
-    
+
     if (runStep2) {
       phaseConfs = ALIGNED_MALLOC_UCHARS(2*N*Mseg64*64);
       phaseConfs2 = ALIGNED_MALLOC_UCHARS(2*N*Mseg64*64);
@@ -156,7 +157,7 @@ namespace EAGLE {
 	  masked++;
 	}
       cout << "Number of indivs masked: " << masked << endl;
-    }    
+    }
   }
 
   // constructor for ref-mode
@@ -167,7 +168,7 @@ namespace EAGLE {
 
     init();
     isFlipped64j = vector <bool> (Mseg64*64); // no flipping in ref mode
-    
+
     phaseConfs = phaseConfs2 = NULL;
     tmpHaploBitsT = ALIGNED_MALLOC_UINT64S(2*(N-Nref)*Mseg64);
 
@@ -251,7 +252,7 @@ namespace EAGLE {
       double maxLogBF = 0, curLogBF = 0;
       for (uint64 m64 = m64start; m64 != m64end; m64 += inc) {
 	const uint64_masks &bits0 = genoBits[m64*N + n0], &bits1 = genoBits[m64*N + n1];
-	uint64 wrongBits = (bits0.is0 & bits1.is2) | (bits0.is2 & bits1.is0);      
+	uint64 wrongBits = (bits0.is0 & bits1.is2) | (bits0.is2 & bits1.is0);
 	if (wrongBits & (wrongBits-1)) // 2+ wrong => fail
 	  break;
 	uint64 missMask = bits0.is9 | bits1.is9;
@@ -360,7 +361,7 @@ namespace EAGLE {
 	double logP_geno1_null = seg64logPs[m64j].cond[g1][3];
 	double logP_geno1_duo = seg64logPs[m64j].cond[g1][g0eff];
 	logBF = min(max((logP_geno1_duo - logP_geno1_null) * invLD64j[m64j],
-			logPerr), -logPerr);	  
+			logPerr), -logPerr);
       }
       curLogBF += logBF;
       if (curLogBF > maxLogBF) {
@@ -461,7 +462,7 @@ namespace EAGLE {
 	else if (g0 == 3) { votes[0][m64j] = votes[1][m64j] = -1; } // missing: default P(1) = p
       }
     }
-    
+
     vector <uchar> isIBDx2(Mseg64*64);
 
     for (uint i = 0; i < matches.size(); i++) {
@@ -570,7 +571,7 @@ namespace EAGLE {
   }
 
   vector <int> Eagle::trioRelPhase(uint64 n0, uint64 nF1, uint64 nF2) const {
-    
+
     bool isParent = false;
     if (((int) nF1) < 0) { // nF1 is the child; n0 is a parent
       isParent = true;
@@ -588,7 +589,7 @@ namespace EAGLE {
       int trioPhase = 0;
       if (!isParent) {
 	if ((bitsF1.is0|bitsF2.is2)&(1ULL<<j)) trioPhase++;
-	if ((bitsF1.is2|bitsF2.is0)&(1ULL<<j)) trioPhase--;	
+	if ((bitsF1.is2|bitsF2.is0)&(1ULL<<j)) trioPhase--;
       }
       else { // n0 is a parent; nF1 is the child
 	int g0 = getGeno0123(m64j, nF1); // child
@@ -857,7 +858,7 @@ namespace EAGLE {
 				      uint64 m64, int pad) const {
     vector <bool> ret;
     if ((int) nF1 == -1) return ret;
-    
+
     bool isParent = false;
     if (((int) nF1) < 0) { // nF1 is the child; n0 is a parent
       isParent = true;
@@ -875,7 +876,7 @@ namespace EAGLE {
       int trioPhase = 0;
       if (!isParent) {
 	if ((bitsF1.is0|bitsF2.is2)&(1ULL<<j)) trioPhase++;
-	if ((bitsF1.is2|bitsF2.is0)&(1ULL<<j)) trioPhase--;	
+	if ((bitsF1.is2|bitsF2.is0)&(1ULL<<j)) trioPhase--;
       }
       else { // n0 is a parent; nF1 is the child
 	int g0 = getGeno0123(m64j, nF1); // child
@@ -1181,7 +1182,7 @@ namespace EAGLE {
 	numErr++;
       }
 
-      uint64 trioPhased = ~(bits0.is0|bits0.is2|bits0.is9) & 
+      uint64 trioPhased = ~(bits0.is0|bits0.is2|bits0.is9) &
 	((bitsF1.is0^bitsF2.is0) | (bitsF1.is2^bitsF2.is2));
       uint64 phased1 = ~(bits0.is0|bits0.is2|bits0.is9) & (bits1.is0|bits1.is2);
 
@@ -1232,7 +1233,7 @@ namespace EAGLE {
     if (cM - lastHet > maxHetGap)
       maxHetGap = cM - lastHet;
     lastHet = cM;
-	
+
     const uint WINDOW = 20; double minLogBFwindow = 0, minLoc = 0;
     for (uint64 wStart = x; wStart+WINDOW <= y; wStart++) {
       if (!maskSnps64j[wStart]) continue;
@@ -1332,7 +1333,7 @@ namespace EAGLE {
 	for (uint e = 0; e < 2; e++)
 	  runStartFreqs[p][e][runStarts[p][e][n1]]++;
       }
-      
+
       for (uint e = 0; e < 2; e++)
 	for (uint s64 = 0; s64 <= m64; s64++)
 	  if ((runStartFreqs[p][e][s64] >= K && m64+1 == Mseg64) || // reached end
@@ -1396,7 +1397,7 @@ namespace EAGLE {
 	// compute cur runStartFreqs based on (updated) cur runStarts
 	runStartFreqs[p][runStarts[p][n1]]++;
       }
-      
+
 	for (uint s64 = 0; s64 <= m64; s64++)
 	  if ((runStartFreqs[p][s64] >= K && m64+1 == Mseg64) || // reached end
 	      (runStartFreqs[p][s64] < K && runStartFreqs[!p][s64] >= K)) {
@@ -1517,14 +1518,14 @@ namespace EAGLE {
     uint w = 521288629;
     for (uint i = 0; i < (n0 & 0xff); i++)
       w=18000*(w&65535)+(w>>16);
-    
+
     uint64 n1 = (n0+1) % N;
     for (uint64 m64j = 0; m64j < Mseg64*64; m64j++)
       if (maskSnps64j[m64j]) {
 	uint g = getGeno0123(m64j, n0);
 	if (g == 3) g = getGeno0123(m64j, n1); // if missing, try filling with geno of next sample
 	if (g == 3) g = 1; // if still missing, set to het
-	
+
 	if (g == 0) // nothing to do; tmpHaploBitsT is already cleared in init()
 	  ;
 	else if (g == 2) { // set bit in both parental haplotypes
@@ -1624,7 +1625,7 @@ namespace EAGLE {
 	  continue; // no overlap
 #ifdef VERBOSE
 	printf("  cM= %.1f (%.1f-%.1f), cM= %.1f (%.1f-%.1f):",
-	       cMs64j[d1.m64jEnd]-cMs64j[d1.m64jStart], cMs64j[d1.m64jStart], cMs64j[d1.m64jEnd], 
+	       cMs64j[d1.m64jEnd]-cMs64j[d1.m64jStart], cMs64j[d1.m64jStart], cMs64j[d1.m64jEnd],
 	       cMs64j[d2.m64jEnd]-cMs64j[d2.m64jStart], cMs64j[d2.m64jStart], cMs64j[d2.m64jEnd]);
 #endif
 	uint64 maxStart = max(d1.m64jStart, d2.m64jStart);
@@ -1729,7 +1730,7 @@ namespace EAGLE {
       checked[i] = true;
       if (longest < longMatchMinTrim) break;
       if (longMatches[i].n == nF1 || longMatches[i].n == nF2) continue;
-      
+
       kept[i] = true;
 #ifdef VERBOSE
       const Match &d1 = longMatches[i];
@@ -1886,7 +1887,7 @@ namespace EAGLE {
 	  uint64 n1hap = topInds[e][m64*K + k];
 	  for (int m64x = m64xMin; m64x < m64xMax; m64x++) {
 	    printf("%2d ", numDipHapWrongBits(m64x, n0, n1hap));
-	  }	  
+	  }
 	  cout << "   (" << n1hap << ")" << endl;
 	}
       }
@@ -1969,7 +1970,7 @@ namespace EAGLE {
 	      | (~(bits0.is0|bits0.is2|bits0.is9) & ~(n1is1 ^ n2is1));
 	    numWrongBits += popcount64(wrongBits);
 	  }
-	  if (numWrongBits < worstInSet) {	    
+	  if (numWrongBits < worstInSet) {
 	    wrongBitsHaps.insert(make_pair(numWrongBits, n2hap));
 	    if (wrongBitsHaps.size() > numHapHaps) {
 	      wrongBitsHaps.erase(--wrongBitsHaps.end());
@@ -2020,7 +2021,7 @@ namespace EAGLE {
 	      const uint64_masks &bits0 = genoBits[m64x*N + n0];
 	      uint64 wrongBits = (bits0.is0 & (n1is1 | n2is1)) | (bits0.is2 & ~(n1is1 & n2is1))
 		| (~(bits0.is0|bits0.is2|bits0.is9) & ~(n1is1 ^ n2is1));
-	      uint popcnt = popcount64(wrongBits);	      
+	      uint popcnt = popcount64(wrongBits);
 	      numWrongBits += popcnt;
 	    }
 	    if (numWrongBits < minWrongBits) {
@@ -2097,7 +2098,7 @@ namespace EAGLE {
       }
       if (!offsetMults.empty()) {
 	sort(offsetMults.begin(), offsetMults.end());
-	int totVotes = min((int) offsetMults.size(), 5), sameVotes = 0;	
+	int totVotes = min((int) offsetMults.size(), 5), sameVotes = 0;
 	for (int k = 0; k < totVotes; k++)
 	  if (offsetMults[k].second == 1)
 	    sameVotes++;
@@ -2122,7 +2123,7 @@ namespace EAGLE {
 	       (int) (sign==1 ? n2hap : n1hap));
 	//cout << closestOffset << endl;
 	vector <bool> phaseSeg = checkSegPhase(n0, nF1, nF2, n1hap, n2hap, sign, m64);
-	phaseVec.insert(phaseVec.end(), phaseSeg.begin(), phaseSeg.end());      
+	phaseVec.insert(phaseVec.end(), phaseSeg.begin(), phaseSeg.end());
       }
 
       printf("# major SE: %2d   # tot SE: %2d / %d\n", countMajorSE(phaseVec), countSE(phaseVec),
@@ -2370,7 +2371,7 @@ namespace EAGLE {
 	  uint64 n1hap = topInds[e][m64*K + k];
 	  for (int m64x = m64xMin; m64x < m64xMax; m64x++) {
 	    printf("%2d ", numDipHapWrongBits(m64x, n0, n1hap));
-	  }	  
+	  }
 	  cout << "   (" << n1hap << ")" << endl;
 	}
       }
@@ -2450,7 +2451,7 @@ namespace EAGLE {
 		(m64+1==Mseg64 || segConfs[n1hap*Mseg64+m64+1] < 5))
 	      safeInsert(refHapSets[m64], n1hap, n0);
 	  }
-	}	  
+	}
       // long dip hap covering m64, m64+1
       cumTop += numTopLong;
       for (std::set <DipHapSeg>::iterator it = longDipHapSegsForward[m64].begin();
@@ -2462,7 +2463,7 @@ namespace EAGLE {
       }
 #ifdef DETAILS
       cout << "m64 = " << m64 << ": " << refHapSets[m64].size() << endl;
-#endif      
+#endif
       /***** AUGMENT REFERENCE HAPLOTYPE SET WITH COMPLEMENTS *****/
       vector <uint> refHapVec(refHapSets[m64].begin(), refHapSets[m64].end());
       if (m64+1 >= side && m64+1+side < Mseg64) { // look up m64+1 in LSH
@@ -2652,7 +2653,7 @@ namespace EAGLE {
 #endif
       if (m64 < Mseg64) {
 	const vector <uint> &refHapVec = refHapVecs[m64]; uint Kref = refHapVec.size();
-	
+
 	// iterate through best in beam
 	if (m64 > 0) {
 	  for (uint s = 0; s < curStates.size() && s < beamWidth; s++) {
@@ -2782,7 +2783,7 @@ namespace EAGLE {
 #ifdef RDTSC_TIMING
 	    uint64 tscBlipPopStart = Timer::rdtsc();
 #endif
-	    int errs = 0;	  
+	    int errs = 0;
 	    for (uint64 m64x = m64mid-side; m64x <= m64mid+side; m64x++) {
 	      const uint64_masks &bits0 = genoBits[m64x*N + n0];
 	      errs += popcount64((hmmHaploBitsT[opp][m64x] ^ haploBitsT[nXhap*Mseg64+m64x])
@@ -2853,7 +2854,7 @@ namespace EAGLE {
     for (uint64 m64 = 0; m64 < Mseg64; m64++) {
       uncertainMasks[m64] = hetErrMasks[m64] | (fixHaploBitsT[0][m64] ^ hmmHaploBitsT[0][m64])
 	| genoBits[m64*N + n0].is9;
-      for (uint64 j = 0; j < 64; j++) {	
+      for (uint64 j = 0; j < 64; j++) {
 	uint64 m64j = m64*64 + j;
 	bool uncertain = (uncertainMasks[m64]>>j)&1;
 	phaseConfsHap0[m64j] = hapConfs[uncertain][(fixHaploBitsT[0][m64]>>j)&1];
@@ -2918,7 +2919,7 @@ namespace EAGLE {
 	      uint64 m64 = m64j/64, j = m64j&63;
 	      uint g0 = getGeno0123(m64j, n0); // TODO: speed up
 	      bool relPhase = ((haploBitsT[n1hap*Mseg64+m64] ^ fixHaploBitsT[0][m64])>>j)&1;
-	      if (g0 == 1) {		
+	      if (g0 == 1) {
 		if (!foundHet)
 		  foundHet = true;
 		else if (relPhase != prevPhase)
@@ -3006,7 +3007,7 @@ namespace EAGLE {
 	     << useEnd64j/64 << "." << (useEnd64j&63) << endl;
       }
       */
-      
+
       vector <int> numSinceSwitches; vector <uint64> switchLocs;
       bool foundHet = false, prevPhase = false; int numSinceSwitch = 0;
       for (uint64 m64j = segStart64j; m64j < segEnd64j; m64j++)
@@ -3058,7 +3059,7 @@ namespace EAGLE {
 
     if (Nref) { // store phased haploBits for target sample
       for (uint64 m64j = 0; m64j < Mseg64*64; m64j++) {
-	if (!maskSnps64j[m64j]) continue;      
+	if (!maskSnps64j[m64j]) continue;
 	uint64 hapBits[2];
 	hapBits[0] = (int) phaseConfsHap0[m64j] >= 128;
 	hapBits[1] = (int) phaseConfsHap1[m64j] >= 128;
@@ -3111,7 +3112,7 @@ namespace EAGLE {
   void Eagle::cpPhaseConfs(uint64 n0start, uint64 n0end) {
     memcpy(phaseConfs + 2*n0start*Mseg64*64, phaseConfs2 + 2*n0start*Mseg64*64,
 	   2*(n0end-n0start)*Mseg64*64);
-  }  
+  }
 
   void Eagle::cpTmpHaploBitsT(uint64 n0start, uint64 n0end) {
     memcpy(haploBitsT + 2*n0start*Mseg64, tmpHaploBitsT + 2*n0start*Mseg64,
@@ -3119,7 +3120,7 @@ namespace EAGLE {
     for (uint64 nHap = 2*n0start; nHap < 2*n0end; nHap++)
       for (uint64 m64 = 0; m64 < Mseg64; m64++)
 	haploBits[m64*2*N + nHap] = haploBitsT[nHap*Mseg64 + m64];
-  }  
+  }
 
   void Eagle::outputSE(const vector <uint> &children, const vector <uint> &nF1s,
 		       const vector <uint> &nF2s, int step) const {
@@ -3153,7 +3154,7 @@ namespace EAGLE {
     FileUtils::AutoGzOfstream hapsGzOut; hapsGzOut.openOrExit(prefix + ".haps.gz");
     uint64 m = 0; // index in snps vector
     for (uint64 m64j = 0; m64j < Mseg64*64; m64j++) {
-      if (!maskSnps64j[m64j]) continue;      
+      if (!maskSnps64j[m64j]) continue;
       hapsGzOut << snps[m].chrom << " " << snps[m].ID << " " << snps[m].physpos
 		<< " " << snps[m].allele1 << " " << snps[m].allele2;
       for (uint64 n0 = 0; n0 < N; n0++) {
@@ -3235,7 +3236,13 @@ namespace EAGLE {
       cerr << "ERROR: Could not write to file " << outFile << endl;
       exit(1);
     }
-    
+    // Get a threadpool for writing equal to
+    // the maximum number of threads that have been configured.
+    htsThreadPool p = {hts_tpool_init(omp_get_max_threads()),
+                       0};
+    hts_set_thread_pool(out, &p);
+    hts_set_thread_pool(htsTmp, &p);
+
     bcf_hdr_t *hdr = bcf_hdr_read(htsTmp);
     bcf_hdr_append_eagle_version(hdr, argc, argv);
     bcf_hdr_write(out, hdr);
@@ -3353,6 +3360,7 @@ namespace EAGLE {
     bcf_hdr_destroy(hdr);
     hts_close(out);
     hts_close(htsTmp);
+    hts_tpool_destroy(p.pool);
     remove(tmpFile.c_str());
   }
 
@@ -3368,7 +3376,13 @@ namespace EAGLE {
 
     htsFile *htsIn = hts_open(vcfFile.c_str(), "r");
     htsFile *out = hts_open(outFile.c_str(), writeMode.c_str());
-    
+    // Get a threadpool for writing equal to
+    // the maximum number of threads that have been configured.
+    htsThreadPool p = {hts_tpool_init(omp_get_max_threads()),
+                       0};
+    hts_set_thread_pool(out, &p);
+    hts_set_thread_pool(htsIn, &p);
+
     bcf_hdr_t *hdr = bcf_hdr_read(htsIn);
     bcf_hdr_append_eagle_version(hdr, argc, argv);
     bcf_hdr_write(out, hdr);
@@ -3392,7 +3406,7 @@ namespace EAGLE {
       int bp = rec->pos+1;
       if (bpStart <= bp && bp <= bpEnd) { // check if within output region
 	int ntgt_gt = bcf_get_genotypes(hdr, rec, &tgt_gt, &mtgt_gt);
-      
+
 	for (int i = 0; i < (int) (N-Nref); i++) {
 	  int ploidy = 2;
 	  int *ptr = tgt_gt + i*ploidy;
@@ -3465,6 +3479,7 @@ namespace EAGLE {
     bcf_hdr_destroy(hdr);
     hts_close(out);
     hts_close(htsIn);
+    hts_tpool_destroy(p.pool);
   }
 
   void Eagle::makeHardCalls(uint64 n0start, uint64 n0end, uint seed) {
@@ -3498,7 +3513,7 @@ namespace EAGLE {
   uint Eagle::computeHash(const uint64 *curHaploBitsT, const vector <uint64> &curHashBits) const {
     return computeHash(curHaploBitsT, &curHashBits[0], curHashBits.size());
   }
-  
+
   double Eagle::computeLogHetP(uint64 m64j) const {
     assert(Nref!=0); // only call this function when in ref-mode
     int sumHaps = 0;
@@ -3517,7 +3532,7 @@ namespace EAGLE {
 	for (uint64 m64 = 0; m64 < Mseg64; m64++)
 	  haploBits[m64*2*N + nHap] = haploBitsT[nHap*Mseg64 + m64];
     }
-    // clear tmpHaploBitsT (temp storage of phased target haplotypes)    
+    // clear tmpHaploBitsT (temp storage of phased target haplotypes)
     memset(tmpHaploBitsT, 0, 2*Ntarget*Mseg64*sizeof(tmpHaploBitsT[0]));
   }
 

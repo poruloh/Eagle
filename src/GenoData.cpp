@@ -24,7 +24,10 @@
 #include <cstring>
 #include <cmath>
 
+#include <htslib/thread_pool.h>
 #include <htslib/vcf.h>
+
+#include "omp.h"
 
 #include "Types.hpp"
 #include "FileUtils.hpp"
@@ -310,7 +313,7 @@ namespace EAGLE {
 	preQCsnpInds.push_back(m); cMvec.push_back(100 * snpsPreQC[m].genpos);
       }
     seg64preQCsnpInds.push_back(preQCsnpInds); seg64cMvecs.push_back(cMvec);
-    
+
     Mseg64 = seg64preQCsnpInds.size();
     cout << "Number of <=(64-SNP, " << cMmax << "cM) segments: " << Mseg64 << endl;
     cout << "Average # SNPs per segment: " << M / Mseg64 << endl;
@@ -369,13 +372,13 @@ namespace EAGLE {
 
 	af.cond[2][0] = log10safe(0);
 	af.cond[1][0] = log10safe(p1half / (p0 + p1half));
-	af.cond[0][0] = log10safe(p0 / (p0 + p1half));	
+	af.cond[0][0] = log10safe(p0 / (p0 + p1half));
 
 	// same orientation as het-het => p(hap=1) = 1-p
 	af.cond[2][4] = log10safe((1-p) * p2 / (p1half + p2));
 	af.cond[1][4] = log10safe((1-p) * p1half / (p1half + p2) + p * p1half / (p0 + p1half));
 	af.cond[0][4] = log10safe(p * p0 / (p0 + p1half));
-	
+
 	// opp orientation to het-het => p(hap=1) = p
 	af.cond[2][5] = log10safe(p * p2 / (p1half + p2));
 	af.cond[1][5] = log10safe(p * p1half / (p1half + p2) + (1-p) * p1half / (p0 + p1half));
@@ -493,7 +496,7 @@ namespace EAGLE {
 	SGEMM_MACRO(&TRANSA_, &TRANSB_, &M_, &N_, &K_, &ALPHA_, A_, &LDA_, B_, &LDB_,
 		    &BETA_, C_, &LDC_);
       }
-      
+
       for (uint64 mPlus = 0; mPlus < mBlockCrop; mPlus++) {
 	uint64 m = mchr0 + mPlus;
 	if (!chrMaskSnps[m]) continue;
@@ -539,7 +542,7 @@ namespace EAGLE {
     return M/cMrange;
   }
 
-  /**    
+  /**
    * reads indiv info from fam file, snp info from bim file
    * allocates memory, reads genotypes, and does QC
    */
@@ -548,7 +551,7 @@ namespace EAGLE {
 			 const vector <string> &excludeFiles, const vector <string> &removeFiles,
 			 double maxMissingPerSnp, double maxMissingPerIndiv, bool noMapCheck,
 			 double cMmax) {
-    
+
     // indivsPreQC (without --remove indivs)
     vector <bool> bedIndivRemoved = processIndivs(famFile, removeFiles);
     // snpsPreQC (restricted to chrom:bpStart-bpEnd and without --exclude snps)
@@ -645,7 +648,7 @@ namespace EAGLE {
     cout << endl;
     cout << "Total post-QC indivs: N = " << N << endl;
     cout << "Total post-QC SNPs: M = " << M << endl;
-    
+
     cout << "MAF spectrum: " << endl;
     const double mafBounds6[7] = {0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.500001};
     vector <int> mafBinCounts(6);
@@ -660,7 +663,7 @@ namespace EAGLE {
 
     if (cMmax == 0) {
       cMmax = std::min(1.0, std::max(N / 1e5, 0.25));
-      cout << "Auto-selecting --maxBlockLen: " << cMmax << " cM" << endl;    
+      cout << "Auto-selecting --maxBlockLen: " << cMmax << " cM" << endl;
     }
 
     vector <bool> nullVec;
@@ -669,7 +672,7 @@ namespace EAGLE {
     ALIGNED_FREE(genosPreQC);
   }
 
-  /**    
+  /**
    * reads genotypes from VCF/BCF file
    * does not save indiv info (will be reread from VCF during output)
    * only saves chrom, physpos, genpos in snp info (rest will be reread from VCF during output)
@@ -678,12 +681,17 @@ namespace EAGLE {
   void GenoData::initVcf(const string &vcfFile, const int inputChrom, const int chromX,
 			 double bpStart, double bpEnd, const string &geneticMapFile,
 			 bool noMapCheck, double cMmax) {
-    
+
     htsFile *fin = hts_open(vcfFile.c_str(), "r");
+
     if (fin == NULL) {
       cerr << "ERROR: Could not open " << vcfFile << " for reading" << endl;
       exit(1);
     }
+    htsThreadPool p = {hts_tpool_init(omp_get_max_threads()),
+                       0};
+    hts_set_thread_pool(fin, &p);
+
     bcf_hdr_t *hdr = bcf_hdr_read(fin);
     bcf1_t *rec = bcf_init1();
     int mgt = 0, *gt = NULL;
@@ -710,7 +718,7 @@ namespace EAGLE {
       // check if POS is within selected region
       int bp = rec->pos+1;
       if (!(bpStart <= bp && bp <= bpEnd)) continue;
-      
+
       // check for multi-allelics (TODO: ignore with warning and don't phase in output)
       if (rec->n_allele > 2) {
 	cerr << "ERROR: Multi-allelic site found (i.e., ALT contains multiple alleles)" << endl;
@@ -768,6 +776,7 @@ namespace EAGLE {
     bcf_destroy(rec);
     bcf_hdr_destroy(hdr);
     hts_close(fin);
+    hts_tpool_destroy(p.pool);
 
     cout << "Read M = " << snpsPreQC.size() << " variants" << endl;
     processMap(snpsPreQC, geneticMapFile, noMapCheck); // modify snpsPreQC
@@ -786,7 +795,7 @@ namespace EAGLE {
 
     if (cMmax == 0) {
       cMmax = std::min(1.0, std::max(N / 1e5, 0.25));
-      cout << "Auto-selecting --maxBlockLen: " << cMmax << " cM" << endl;    
+      cout << "Auto-selecting --maxBlockLen: " << cMmax << " cM" << endl;
     }
 
     buildGenoBits(NULL, genos2bit, cMmax);
@@ -802,7 +811,7 @@ namespace EAGLE {
    * reads (Nbed+3)>>2 bytes into bedLineIn
    * stores sum(!bedIndivRemoved) bytes into genoLine if loadGenoLine == true
    */
-  void GenoData::readBedLine(FileUtils::AutoGzIfstream &fin, uchar bedLineIn[], uchar genoLine[], 
+  void GenoData::readBedLine(FileUtils::AutoGzIfstream &fin, uchar bedLineIn[], uchar genoLine[],
 			     vector <bool> &bedIndivRemoved, bool storeGenoLine) {
     uint64 Nbed = bedIndivRemoved.size();
     fin.read((char *) bedLineIn, (Nbed+3)>>2);
