@@ -159,7 +159,7 @@ namespace EAGLE {
       }
       if (!ret.empty() &&
 	  (snp.chrom < ret.back().chrom ||
-	   (snp.chrom == ret.back().chrom && (snp.physpos <= ret.back().physpos ||
+	   (snp.chrom == ret.back().chrom && (snp.physpos < ret.back().physpos ||
 					       snp.genpos < ret.back().genpos)))) {
 	if (numOutOfOrder < 5) {
 	  cerr << "WARNING: Out-of-order snp in bim file: " << bimFile << endl;
