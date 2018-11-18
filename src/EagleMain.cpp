@@ -83,8 +83,6 @@ void phaseWithRef(EagleParams &params, Timer &timer, double t0, int argc, char *
   
   uint64 Nref = vcfData.getNref(), Ntarget = vcfData.getNtarget();
   int iters = params.pbwtIters;
-  if (params.noImpMissing)
-    iters = 1;
   if (iters == 0) {
     if (Ntarget < Nref/2)
       iters = 1;
@@ -95,6 +93,7 @@ void phaseWithRef(EagleParams &params, Timer &timer, double t0, int argc, char *
     cout << endl << "Auto-selecting number of phasing iterations: setting --pbwtIters to "
 	 << iters << endl << endl;
   }
+  bool internalImpMissing = !params.noImpMissing || iters > 1; // internally impute missing
 
   cout << endl << "BEGINNING PHASING" << endl;
 
@@ -110,7 +109,7 @@ void phaseWithRef(EagleParams &params, Timer &timer, double t0, int argc, char *
       HapBitsT *hapBitsTptr = NULL;
       HapHedge *hapHedgePtr = NULL;
 #ifdef OLD_IMP_MISSING
-      if (!params.noImpMissing) {
+      if (internalImpMissing) {
 	cout << "Making HapHedge" << endl;
 	hapBitsTptr = new HapBitsT(eagle.getHaploBitsT(), 2*eagle.getNlib(2+iter),
 				   eagle.getMseg64(), eagle.getMaskSnps64j());
@@ -138,10 +137,10 @@ void phaseWithRef(EagleParams &params, Timer &timer, double t0, int argc, char *
 	}
 	confs[i-Nref] = eagle.runPBWT
 	  (i, nF1, nF2, params.Kpbwt/(iter<iters?2:1), params.expectIBDcM, params.histFactor,
-	   iter==iters, iter>1, !params.noImpMissing, params.usePS, conPSall[i-Nref],
+	   iter==iters, iter>1, internalImpMissing, params.usePS, conPSall[i-Nref],
 	   params.chrom==params.chromX);
 #ifdef OLD_IMP_MISSING
-	if (!params.noImpMissing) {
+	if (internalImpMissing) {
 	  Timer tim;
 	  eagle.imputeMissing(*hapHedgePtr, i);
 	  timeImpMissing += tim.update_time();
@@ -155,7 +154,7 @@ void phaseWithRef(EagleParams &params, Timer &timer, double t0, int argc, char *
 	}
       }
 #ifdef OLD_IMP_MISSING
-      if (!params.noImpMissing) {
+      if (internalImpMissing) {
 	delete hapHedgePtr;
 	delete hapBitsTptr;
       }
@@ -177,7 +176,7 @@ void phaseWithRef(EagleParams &params, Timer &timer, double t0, int argc, char *
       cout << "Time for phasing iter " << iter << " MN^2: " << timeMN2 / params.numThreads
 	   << endl;
 #ifdef OLD_IMP_MISSING
-    else if (!params.noImpMissing)
+    else if (internalImpMissing)
       cout << "Time for phasing iter " << iter << " impMissing: "
 	   << timeImpMissing / params.numThreads << endl;
 #endif

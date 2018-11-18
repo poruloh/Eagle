@@ -255,10 +255,6 @@ namespace EAGLE {
 	    cerr << "ERROR: --vcfTarget must be specified in reference-based phasing mode" << endl;
 	    return false;
 	  }
-	  if (pbwtIters > 1 && noImpMissing) {
-	    cerr << "ERROR: --pbwtIters cannot be greater than 1 if --noImpMissing is set" << endl;
-	    return false;
-	  }
 	  if (vcfRef.substr(vcfRef.length()-4) != string(".bcf")) {
 	    cerr << "WARNING: --vcfRef does not end in '.bcf'; BCF input is fastest" << endl;
 	  }
@@ -296,7 +292,7 @@ namespace EAGLE {
 	  return false;
 	}
       }
-      else { // non-ref mode
+      else { // non-ref mode; plink input
 	if (famFile.empty()) {
 	  cerr << "ERROR: fam file must be specified either using --fam or --bfile"
 	       << endl;
@@ -313,7 +309,7 @@ namespace EAGLE {
 	  return false;
 	}
 	if (noImpMissing) {
-	  cerr << "ERROR: --noImpMissing is only supported in ref-mode" << endl;
+	  cerr << "ERROR: --noImpMissing is only supported with vcf input" << endl;
 	  return false;
 	}
 	if (bpFlanking != 0) {
