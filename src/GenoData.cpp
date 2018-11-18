@@ -648,6 +648,14 @@ namespace EAGLE {
     cout << endl;
     cout << "Total post-QC indivs: N = " << N << endl;
     cout << "Total post-QC SNPs: M = " << M << endl;
+    if (N < 2) {
+      cerr << "ERROR: N>=2 individuals are required" << endl;
+      exit(1);
+    }
+    if (M == 0) {
+      cerr << "ERROR: At least 1 SNP is required" << endl;
+      exit(1);
+    }
 
     cout << "MAF spectrum: " << endl;
     const double mafBounds6[7] = {0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.500001};
