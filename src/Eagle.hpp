@@ -191,7 +191,7 @@ namespace EAGLE {
 		  int argc, char**argv) const;
     void writeVcfNonRef(const std::string &vcfFile, const std::string &outFile, int inputChrom,
 			int chromX, double bpStart, double bpEnd, const std::string &writeMode,
-			bool keepMissingPloidyX, int argc, char **argv) const;
+			bool noImpMissing, bool keepMissingPloidyX, int argc, char **argv) const;
     void makeHardCalls(uint64 n0start, uint64 n0end, uint seed);
     void initRefIter(int refIter);
     void buildHashTables(int iter, int batch, int seed);

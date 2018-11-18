@@ -3366,13 +3366,13 @@ namespace EAGLE {
 
   // write phased output in non-ref mode
   // differences from the above (ref-mode) are as follows:
-  // - does not take noImpMissing arg
   // - checks chrom
   // - does not increment m64j outside the bpStart-bpEnd region
   // - does not delete tmpFile (now vcfFile with original input)
   void Eagle::writeVcfNonRef(const string &vcfFile, const string &outFile, int inputChrom,
 			     int chromX, double bpStart, double bpEnd, const string &writeMode,
-			     bool keepMissingPloidyX, int argc, char **argv) const {
+			     bool noImpMissing, bool keepMissingPloidyX, int argc, char **argv)
+    const {
 
     htsFile *htsIn = hts_open(vcfFile.c_str(), "r");
     htsFile *out = hts_open(outFile.c_str(), writeMode.c_str());
@@ -3437,7 +3437,7 @@ namespace EAGLE {
 	    else if (!missing && minIdx > 0) { // ALT1/ALT2 het => don't phase (shouldn't happen)
 	      ptr[0] = ptr[1] = bcf_gt_missing;
 	    }
-	    else { // REF/ALT* het => phase as called by Eagle
+	    else if (!missing || !noImpMissing) { // miss||REF/ALT* het => phase as called by Eagle
 	      for (int j = 0; j < ploidy; j++) {
 		uint64 nTargetHap = 2*i + j;
 		int altIdx = missing ? 1 : maxIdx;
@@ -3450,7 +3450,7 @@ namespace EAGLE {
 	  }
 	  else { // haploid
 	    mostRecentPloidy[i] = 1;
-	    if ( bcf_gt_is_missing(ptr[0]) ) { // missing allele
+	    if ( bcf_gt_is_missing(ptr[0]) && !noImpMissing ) { // missing allele
 	      int j = 0;
 	      uint64 nTargetHap = 2*i + j;
 	      int altIdx = 1;

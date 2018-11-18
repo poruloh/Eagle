@@ -502,8 +502,8 @@ int main(int argc, char *argv[]) {
       string outFile = params.outPrefix + "." + params.vcfOutSuffix;
       cout << "Writing " << params.vcfOutSuffix << " output to " << outFile << endl;
       eagle.writeVcfNonRef(params.vcfFile, outFile, params.chrom, params.chromX, params.bpStart,
-			   params.bpEnd, params.vcfWriteMode, params.keepMissingPloidyX, argc,
-			   argv);
+			   params.bpEnd, params.vcfWriteMode, params.noImpMissing,
+			   params.keepMissingPloidyX, argc, argv);
     }
     else {
       cout << "Writing .haps.gz and .sample output" << endl; timer.update_time();

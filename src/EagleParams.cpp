@@ -237,10 +237,6 @@ namespace EAGLE {
 
       if (vm.count("vcfRef") || vm.count("vcfTarget") || vm.count("vcf")) { // VCF mode
 	if (vm.count("vcf")) { // non-ref mode
-	  if (noImpMissing) {
-	    cerr << "ERROR: --noImpMissing is only supported in ref-mode" << endl;
-	    return false;
-	  }
 	  if (bpFlanking != 0) {
 	    cerr << "ERROR: --bpFlanking is only supported in ref-mode" << endl;
 	    return false;
