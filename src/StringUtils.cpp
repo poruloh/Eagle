@@ -145,6 +145,20 @@ namespace StringUtils {
 	exit(1);
       }
     }
+    // check if nameBuf exactly matches a valid chromosome string
+    vector <string> validNames;
+    for (int chr = chromMin; chr <= chromX; chr++) validNames.push_back(itos(chr));
+    validNames.push_back("X");
+    bool found = false;
+    for (int i = 0; i < (int) validNames.size(); i++)
+      if (string(nameBuf) == validNames[i] || string(nameBuf) == "chr"+validNames[i])
+	found = true;
+    if (!found) {
+      cerr << chrom << endl;
+      cerr << "ERROR: Invalid chromosome: " << string(nameBuf) << endl;
+      cerr << "       Allowed names are 1, 2, ..., " << chromX << ", X (optionally preceded by 'chr')" << endl;
+      exit(1);
+    }
     return chrom;
   }
 
