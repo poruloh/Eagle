@@ -215,7 +215,7 @@ int main(int argc, char *argv[]) {
   cout << "                      +-----------------------------+" << endl;
   cout << endl;
 
-  cout << "Copyright (C) 2015-2017 Harvard University." << endl;
+  cout << "Copyright (C) 2015-2018 Harvard University." << endl;
   cout << "Distributed under the GNU GPLv3+ open source license." << endl << endl;
 
   //cout << "Boost version: " << BOOST_LIB_VERSION << endl;

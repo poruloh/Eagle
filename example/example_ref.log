@@ -6,7 +6,7 @@
                       |                             |
                       +-----------------------------+
 
-Copyright (C) 2015-2017 Harvard University.
+Copyright (C) 2015-2018 Harvard University.
 Distributed under the GNU GPLv3+ open source license.
 
 Command line options:
@@ -43,7 +43,7 @@ Average # SNPs per cM:   42
 Number of <=(64-SNP, 1cM) segments: 9
 Average # SNPs per segment: 47
 
-Time for reading input: 5.09883 sec
+Time for reading input: 5.09263 sec
 
 Fraction of heterozygous genotypes: 0.178114
 Typical span of default 100-het history length: 13.44 cM
@@ -59,15 +59,15 @@ PHASING ITER 1 OF 1
 
 Phasing target samples
 ................................................................................
-Time for phasing iter 1: 0.130578
+Time for phasing iter 1: 0.132139
 Writing vcf.gz output to target.phased.vcf.gz
 [W::vcf_parse] INFO 'AC' is not defined in the header, assuming Type=String
 [W::vcf_parse] INFO 'AN' is not defined in the header, assuming Type=String
 [W::vcf_parse] INFO 'DP' is not defined in the header, assuming Type=String
 [W::vcf_parse] INFO 'AFR_AF' is not defined in the header, assuming Type=String
 [W::vcf_parse] INFO 'EX_TARGET' is not defined in the header, assuming Type=String
-Time for writing output: 0.034054
-Total elapsed time for analysis = 5.26409 sec
+Time for writing output: 0.0356269
+Total elapsed time for analysis = 5.26099 sec
 
 Mean phase confidence of each target individual:
 ID	PHASE_CONFIDENCE
